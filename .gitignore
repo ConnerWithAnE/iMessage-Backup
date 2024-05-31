@@ -1,13 +1,17 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
 # dependencies
-/node_modules
+/server/node_modules
+/web/node_modules
 /.pnp
 .pnp.js
 .yarn/install-state.gz
 
 # testing
 /coverage
+
+/server/data
+/web/data
 
 chat.db
 chat.db-shm

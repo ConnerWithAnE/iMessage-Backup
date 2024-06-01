@@ -13,7 +13,7 @@ export class AppService {
   }
 
   async getMessagesByChatId(chatId: number) {
-    const messageIds = await this.messageHandler.getMessageIDs(chatId);
+    const messageIds = await this.messageHandler.getMessageIDsFromChatIDs(chatId);
     return this.messageHandler.getMessagesFromIDs(messageIds);
   }
 }

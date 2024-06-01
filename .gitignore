@@ -12,6 +12,7 @@
 
 /server/data
 /web/data
+/web-next/data
 
 chat.db
 chat.db-shm

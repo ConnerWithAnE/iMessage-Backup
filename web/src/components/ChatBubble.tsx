@@ -23,6 +23,9 @@ const ChatBubble = ({ children, sender }: ChatBubbleProps) => {
                         className={`w-4 h-4 ${bubbleStyle} rounded-full ${bubbleAlign}`}
                     />
                 </div>
+                <div>
+                  <div>{}</div>
+                </div>
                 <div className="relative p-2">
                     <div className="text-left">{children}</div>
                 </div>

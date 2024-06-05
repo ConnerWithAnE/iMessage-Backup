@@ -5,9 +5,11 @@ import {
   CHAT_MESSAGE_JOIN,
   CHAT_HANDLE_JOIN,
   HANDLE,
+  CHAT,
 } from './constants/tableNames';
 import { Message, createMessageInstance } from './interfaces/message.interface';
 import { Handle, createHandleInstance } from './interfaces/handle.interface';
+import { ChatPreview, createChatPreviewInstance } from './interfaces/chat_preview.interface';
 
 import {
   ChatMessage,
@@ -20,20 +22,61 @@ import {
 import { rejects } from 'assert';
 
 export class MessageHandler {
-  private db: sqlite3.Database;
+  private chatDB: sqlite3.Database;
+  private manifestDB: sqlite3.Database;
 
   public chatMessageMap!: Map<number, ChatMessage>;
 
-  constructor(db: sqlite3.Database) {
-    this.db = db;
+  constructor(cdb: sqlite3.Database, mdb: sqlite3.Database) {
+    this.chatDB = cdb;
+    this.manifestDB = mdb;
   }
+
+  public async getChatPreviews(): Promise<ChatPreview[]> {
+    console.log("Getting Chats")
+    return new Promise<ChatPreview[]>((resolve, reject) => {
+      const query =
+          `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
+          FROM ${CHAT} c 
+          JOIN ${CHAT_HANDLE_JOIN} chj ON c.ROWID = chj.chat_id 
+          JOIN ${HANDLE} h ON chj.handle_id = h.ROWID 
+          GROUP BY c.ROWID, c.last_read_message_timestamp, c.service_name, c.display_name`;
+      this.chatDB.all(query, (err: Error | null, rows: any[]) => {
+          if (err) {
+              reject('Error executing query: ' + err.message);
+          } else {
+              const chatPreviews: ChatPreview[] = rows.map(row => ({
+                  CHATID: row.CHATID,
+                  last_read_message_timestamp: row.last_read_message_timestamp,
+                  service_name: row.service_name,
+                  display_name: row.display_name,
+                  // Parse handle_ids string into a Record<number, string>
+                  handle_ids: this.parseHandleIds(row.handle_ids)
+              }));
+              console.log(chatPreviews.length);
+              resolve(chatPreviews);
+          }
+      });
+  });
+}
+
+private parseHandleIds(handleIdsString: string): Record<number, string> {
+  const handleIdsArray: string[] = handleIdsString.split(',');
+  const handleIdsRecord: Record<number, string> = {};
+  for (const handleIdString of handleIdsArray) {
+      const [rowId, id]: string[] = handleIdString.split(':');
+      const handleId: number = parseInt(rowId);
+      handleIdsRecord[handleId] = id;
+  }
+  return handleIdsRecord;
+}
 
   public async getMessageIDsFromChatID(chat_id: number): Promise<number[]> {
     return new Promise((resolve, reject) => {
       const columns = Object.keys(createChatMessageInstance()).join(',');
       const query = `SELECT ${columns} FROM ${CHAT_MESSAGE_JOIN} WHERE chat_id = ${chat_id}`;
 
-      this.db.all(query, (err: Error | null, rows: ChatMessage[]) => {
+      this.chatDB.all(query, (err: Error | null, rows: ChatMessage[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
@@ -52,7 +95,7 @@ export class MessageHandler {
       const columns = Object.keys(createChatHandleInstance()).join(',');
       const query = `SELECT ${columns} FROM ${CHAT_HANDLE_JOIN} WHERE chat_id = ${chat_id}`;
 
-      this.db.all(query, (err: Error | null, rows: ChatHandle[]) => {
+      this.chatDB.all(query, (err: Error | null, rows: ChatHandle[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
@@ -75,7 +118,7 @@ export class MessageHandler {
       const columns = Object.keys(createHandleInstance()).join(',');
       const query = `SELECT ${columns} FROM ${HANDLE} WHERE handle_id = ${handle_id}`;
 
-      this.db.all(query, (err: Error | null, handle: Handle) => {
+      this.chatDB.all(query, (err: Error | null, handle: Handle) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
@@ -99,7 +142,7 @@ export class MessageHandler {
       const rowIDList = message_ids.slice(0, numMessagesToRetrieve).join(',');
       const query = `SELECT ${columns} FROM ${MESSAGE} WHERE ROWID IN (${rowIDList})`;
 
-      this.db.all(query, (err: Error | null, rows: Message[]) => {
+      this.chatDB.all(query, (err: Error | null, rows: Message[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
@@ -116,7 +159,7 @@ export class MessageHandler {
       const rowIDList = message_ids.join(',');
       const query = `SELECT ${columns} FROM ${MESSAGE} WHERE ROWID IN (${rowIDList})`;
 
-      this.db.all(query, (err: Error | null, rows: Message[]) => {
+      this.chatDB.all(query, (err: Error | null, rows: Message[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
@@ -136,7 +179,7 @@ export class MessageHandler {
       const columns = Object.keys(createChatMessageInstance()).join(',');
       const query = `SELECT ${columns} FROM ${CHAT_MESSAGE_JOIN}`;
 
-      this.db.all(query, (err: Error | null, rows: ChatMessage[]) => {
+      this.chatDB.all(query, (err: Error | null, rows: ChatMessage[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {

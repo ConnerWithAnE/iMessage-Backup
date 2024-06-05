@@ -2,22 +2,34 @@ import * as sqlite3 from 'sqlite3';
 
 export class InitializeDatabase {
 
-    private db: sqlite3.Database;
-    private dbPath: string;
+    private chatDB: sqlite3.Database;
+    private manifestDB: sqlite3.Database;
 
-    constructor(dbPath: string) {
-        this.dbPath = dbPath;
-        this.db = new sqlite3.Database(this.dbPath, sqlite3.OPEN_READONLY, (err: Error | null) => {
+    constructor(chatDBPath: string, manifestDBPath: string) {
+        
+        this.chatDB = new sqlite3.Database(chatDBPath, sqlite3.OPEN_READONLY, (err: Error | null) => {
             if (err) {
-              console.error('Error opening database:', err.message);
+              console.error('Error opening Chat database:', err.message);
             } else {
-              console.log(`Connected to the database: ${this.dbPath}`);
+              console.log(`Connected to the database: ${chatDBPath}`);
+            }
+          });
+          
+          this.manifestDB = new sqlite3.Database(manifestDBPath, sqlite3.OPEN_READONLY, (err: Error | null) => {
+            if (err) {
+              console.error('Error opening Manifest database:', err.message);
+            } else {
+              console.log(`Connected to the database: ${manifestDBPath}`);
             }
           });
     }
 
-    getDB(): sqlite3.Database {
-        return this.db;
+    getChatDB(): sqlite3.Database {
+        return this.chatDB;
+    }
+
+    getManifestDB(): sqlite3.Database {
+      return this.manifestDB;
     }
 
 }

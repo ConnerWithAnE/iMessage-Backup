@@ -8,7 +8,7 @@ async function bootstrap() {
 
 const temp = async () => {
 
-  const db = new InitializeDatabase('../../data/chat.db');
+  const db = new InitializeDatabase('../data/chat.db', '../data/Manifest.db');
 
 };
 

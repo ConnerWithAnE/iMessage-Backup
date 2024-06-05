@@ -11,4 +11,9 @@ export class AppController {
     return this.appService.getMessagesByChatId(chatId);
   }
 
+  @Get('chats/previews')
+  async getChatPreviews() {
+    return this.appService.getChatPreviews();
+  }
+
 }

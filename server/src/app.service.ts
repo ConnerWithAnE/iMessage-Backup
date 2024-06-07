@@ -23,4 +23,8 @@ export class AppService {
   async getChatPreviews() {
     return this.messageHandler.getChatPreviews();
   }
+
+  async getChatPreview(chat_id: number) {
+    return this.messageHandler.getChatPreview(chat_id);
+  }
 }

@@ -1,7 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Message } from "../interfaces/message.interface";
+import { Message } from "../../interfaces/message.interface";
 import ChatBubble from "./ChatBubble";
-import "../App.css";
+import "../../App.css";
+import ChatPanel from "./ChatPanel";
+import React from "react";
+import { ChatPreview } from "../../interfaces/chat_preview.interface";
 
 interface MessagePaneProps {
     id: number;
@@ -13,23 +16,46 @@ export default function MessagePane({ id }: MessagePaneProps) {
     const [loadCount, setLoadCount] = useState<number>(10); // Number of messages to load at a time
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const topMessageIdRef = useRef<number | null>(null);
+    const [chatPreview, setChatPreview] = React.useState<ChatPreview>();
+
+    const [isLoading, setIsLoading] = useState<boolean>(true); // State to track loading
+
+
+
+    const debug = false;
 
     useEffect(() => {
         const fetchMessages = async () => {
             if (messages.length === 0) {
                 try {
-                    const response = await fetch(
+                    const messageResponse = await fetch(
                         `http://localhost:3000/messages/${id}`
                     );
-                    if (response.ok) {
-                        const data = await response.json();
+                    if (messageResponse.ok) {
+                        const data = await messageResponse.json();
                         setMessages(data); // Ensure messages are in the correct order
+                        try {
+                            const response = await fetch(
+                                `http://localhost:3000/chats/preview/${id}`
+                            );
+                            if (response.ok) {
+                                const data = await response.json();
+                                console.log(data)
+                                setChatPreview(data);
+                            }
+                        } catch (error) {
+                            console.error("Error fetching chat previews", error);
+                        } finally {
+                            setIsLoading(false); // Set loading state to false when fetches are done
+                        }
+                        
                     }
                 } catch (error) {
                     console.error("Error fetching messages", error);
                 }
             }
         };
+        
 
         fetchMessages();
     }, [id]);
@@ -117,23 +143,33 @@ export default function MessagePane({ id }: MessagePaneProps) {
         }
     }, [renderedMessages]);
 
+    
+
     return (
-        <div
-            className="chat-container"
-            ref={chatContainerRef}
-            style={{ height: "500px", overflowY: "auto" }}
-        >
-            {renderedMessages.map((message: Message, index: number) => (
-                <div
-                    key={index}
-                    id={`message-${message.ROWID}`}
-                    data-rowid={message.ROWID} // Store the ROWID as data attribute
-                >
-                    <ChatBubble sender={message.is_from_me} >
-                        {message.text}
-                    </ChatBubble>
-                </div>
-            ))}
+        <div className="flex flex-col h-[800px] mb-5">
+            <div className="items-center border-b border-b-gray-300 flex-shrink-0">
+                <ChatPanel chatInfo={chatPreview}/>
+            </div>
+            <div
+                className="chat-container flex-grow overflow-y-auto"
+                ref={chatContainerRef}
+            >
+                {renderedMessages.map((message: Message, index: number) => {
+                    const prevMessageID = index > 0 ? renderedMessages[index - 1].handle_id : null;
+                    return (
+                        <div
+                            key={index}
+                            id={`message-${message.ROWID}`}
+                            data-rowid={message.ROWID} // Store the ROWID as data attribute
+                        >
+                            {debug ? <p>{message.ROWID}</p> : <p></p>}
+                            <ChatBubble message={message} handle={chatPreview?.handle_ids[message.handle_id]} prevMessageID={prevMessageID}>
+                                {message.text}
+                            </ChatBubble>
+                        </div>
+                    );
+                })}
+            </div>
         </div>
     );
 }

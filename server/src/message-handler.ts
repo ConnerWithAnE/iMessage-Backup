@@ -60,6 +60,38 @@ export class MessageHandler {
   });
 }
 
+public async getChatPreview(chat_id: number): Promise<ChatPreview> {
+  console.log("Getting Chat");
+  return new Promise<ChatPreview>((resolve, reject) => {
+      const query =
+          `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
+          FROM ${CHAT} c 
+          JOIN ${CHAT_HANDLE_JOIN} chj ON c.ROWID = chj.chat_id 
+          JOIN ${HANDLE} h ON chj.handle_id = h.ROWID 
+          WHERE c.ROWID = ${chat_id}
+          GROUP BY c.ROWID, c.last_read_message_timestamp, c.service_name, c.display_name`;
+
+      this.chatDB.get(query, (err: Error | null, row: any) => {
+          if (err) {
+              reject('Error executing query: ' + err.message);
+          } else if (!row) {
+              reject('No chat found with the given chat_id');
+          } else {
+              const chatPreview: ChatPreview = {
+                  CHATID: row.CHATID,
+                  last_read_message_timestamp: row.last_read_message_timestamp,
+                  service_name: row.service_name,
+                  display_name: row.display_name,
+                  // Parse handle_ids string into a Record<number, string>
+                  handle_ids: this.parseHandleIds(row.handle_ids)
+              };
+              resolve(chatPreview);
+          }
+      });
+  });
+}
+
+
 private parseHandleIds(handleIdsString: string): Record<number, string> {
   const handleIdsArray: string[] = handleIdsString.split(',');
   const handleIdsRecord: Record<number, string> = {};

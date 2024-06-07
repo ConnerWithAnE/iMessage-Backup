@@ -1,16 +1,18 @@
-import MessagePane from "./MessagePane";
+import MessagePane from "./MessagePane/MessagePane";
 import "../App.css";
+import { useParams } from "react-router-dom";
 
-interface ChatProps {
-  id: number;
-}
+export default function Chat() {
+    const { id } = useParams<{ id?: string }>();
+    const chatId = id ? parseInt(id, 10) : undefined;
 
-export default function Chat({id}: ChatProps) {
+    if (chatId === undefined) {
+        return <div>Invalid chat ID</div>; // Display an error message or handle the case where id is undefined
+    }
+
     return (
-    <div className="bg-red-400">
-      <MessagePane id={24} />
-    
-    
-    </div>
+        <div className="relative bg-gray-100 px-5 mr-2 rounded-lg">
+            <MessagePane id={chatId} />
+        </div>
     );
 }

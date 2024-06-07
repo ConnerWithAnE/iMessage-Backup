@@ -20,42 +20,36 @@ export default function MessagePane({ id }: MessagePaneProps) {
 
     const [isLoading, setIsLoading] = useState<boolean>(true); // State to track loading
 
-
-
     const debug = false;
 
     useEffect(() => {
         const fetchMessages = async () => {
             if (messages.length === 0) {
                 try {
-                    const messageResponse = await fetch(
-                        `http://localhost:3000/messages/${id}`
+                    const response = await fetch(
+                        `http://localhost:3000/chats/preview/${id}`
                     );
-                    if (messageResponse.ok) {
-                        const data = await messageResponse.json();
-                        setMessages(data); // Ensure messages are in the correct order
-                        try {
-                            const response = await fetch(
-                                `http://localhost:3000/chats/preview/${id}`
-                            );
-                            if (response.ok) {
-                                const data = await response.json();
-                                console.log(data)
-                                setChatPreview(data);
-                            }
-                        } catch (error) {
-                            console.error("Error fetching chat previews", error);
-                        } finally {
-                            setIsLoading(false); // Set loading state to false when fetches are done
+                    if (response.ok) {
+                        const data = await response.json();
+                        setChatPreview(data);
+                    }
+                    try {
+                        const messageResponse = await fetch(
+                            `http://localhost:3000/messages/${id}`
+                        );
+                        if (messageResponse.ok) {
+                            const data = await messageResponse.json();                            setMessages(data); // Ensure messages are in the correct order
                         }
-                        
+                    } catch (error) {
+                        console.error("Error fetching messages", error);
+                    } finally {
+                        setIsLoading(false); // Set loading state to false when fetches are done
                     }
                 } catch (error) {
-                    console.error("Error fetching messages", error);
+                    console.error("Error fetching chat previews", error);
                 }
             }
         };
-        
 
         fetchMessages();
     }, [id]);
@@ -102,9 +96,10 @@ export default function MessagePane({ id }: MessagePaneProps) {
 
             if (scrollTop === 0) {
                 // Get the ROWID of the top message
-                const topMessageElement = chatContainerRef.current.querySelector(
-                    ".chat-container > div:first-child"
-                );
+                const topMessageElement =
+                    chatContainerRef.current.querySelector(
+                        ".chat-container > div:first-child"
+                    );
                 if (topMessageElement) {
                     const topMessageId = parseInt(
                         topMessageElement.getAttribute("data-rowid") || ""
@@ -138,12 +133,11 @@ export default function MessagePane({ id }: MessagePaneProps) {
             ) as HTMLElement;
             if (topMessageElement && chatContainerRef.current) {
                 chatContainerRef.current.scrollTop =
-                    topMessageElement.offsetTop - chatContainerRef.current.offsetTop;
+                    topMessageElement.offsetTop -
+                    chatContainerRef.current.offsetTop;
             }
         }
     }, [renderedMessages]);
-
-    
 
     return (
         <div className="flex flex-col h-[800px] mb-5">
@@ -155,7 +149,10 @@ export default function MessagePane({ id }: MessagePaneProps) {
                 ref={chatContainerRef}
             >
                 {renderedMessages.map((message: Message, index: number) => {
-                    const prevMessageID = index > 0 ? renderedMessages[index - 1].handle_id : null;
+                    const prevMessageID =
+                        index > 0
+                            ? renderedMessages[index - 1].handle_id
+                            : null;
                     return (
                         <div
                             key={index}
@@ -163,7 +160,18 @@ export default function MessagePane({ id }: MessagePaneProps) {
                             data-rowid={message.ROWID} // Store the ROWID as data attribute
                         >
                             {debug ? <p>{message.ROWID}</p> : <p></p>}
-                            <ChatBubble message={message} handle={chatPreview?.handle_ids[message.handle_id]} prevMessageID={prevMessageID}>
+                            <ChatBubble
+                                message={message}
+                                handle={
+                                    chatPreview?.handle_ids[message.handle_id]
+                                        ? chatPreview.handle_ids[message.handle_id].Nickname ||
+                                          (chatPreview.handle_ids[message.handle_id].First && chatPreview.handle_ids[message.handle_id].Last
+                                            ? `${chatPreview.handle_ids[message.handle_id].First} ${chatPreview.handle_ids[message.handle_id].Last}`
+                                            : (chatPreview.handle_ids[message.handle_id].First || chatPreview.handle_ids[message.handle_id].Last || chatPreview.handle_ids[message.handle_id].id))
+                                        : undefined // Fallback to handle_id if not found in chatPreview.handle_ids
+                                }
+                                prevMessageID={prevMessageID}
+                            >
                                 {message.text}
                             </ChatBubble>
                         </div>

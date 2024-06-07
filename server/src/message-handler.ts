@@ -6,10 +6,16 @@ import {
   CHAT_HANDLE_JOIN,
   HANDLE,
   CHAT,
+  ABMULTIVALUE,
+  ABPERSON,
 } from './constants/tableNames';
 import { Message, createMessageInstance } from './interfaces/message.interface';
 import { Handle, createHandleInstance } from './interfaces/handle.interface';
-import { ChatPreview, createChatPreviewInstance } from './interfaces/chat_preview.interface';
+import {
+  ChatPreview,
+  EarlyChatPreview,
+  createChatPreviewInstance,
+} from './interfaces/chat_preview.interface';
 
 import {
   ChatMessage,
@@ -20,51 +26,210 @@ import {
   createChatHandleInstance,
 } from './interfaces/chat_handle.interface';
 import { rejects } from 'assert';
+import { ListHandle } from './interfaces/list_handle.interface';
 
 export class MessageHandler {
   private chatDB: sqlite3.Database;
   private manifestDB: sqlite3.Database;
+  private addressDB: sqlite3.Database;
 
   public chatMessageMap!: Map<number, ChatMessage>;
 
-  constructor(cdb: sqlite3.Database, mdb: sqlite3.Database) {
+  constructor(
+    cdb: sqlite3.Database,
+    mdb: sqlite3.Database,
+    adb: sqlite3.Database,
+  ) {
     this.chatDB = cdb;
     this.manifestDB = mdb;
+    this.addressDB = adb;
   }
 
-  public async getChatPreviews(): Promise<ChatPreview[]> {
-    console.log("Getting Chats")
-    return new Promise<ChatPreview[]>((resolve, reject) => {
-      const query =
-          `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
+  public async getContactFromNumber(h_id: string): Promise<ListHandle> {
+    return new Promise<ListHandle>((resolve, reject) => {
+      const query = `SELECT abp.First, abp.Last, abp.Middle, abp.Nickname, abmv.value
+      FROM ${ABPERSON} abp
+      JOIN ${ABMULTIVALUE} abmv ON abp.ROWID = abmv.record_id
+      WHERE abmv.value = ${h_id}`;
+      this.addressDB.get(query, (err: Error | null, row: any) => {
+        if (err) {
+          reject('Error executing query: ' + err.message);
+        } else if (!row) {
+          resolve(undefined);
+        } else {
+          const listHandle: ListHandle = {
+            id: row.value,
+            First: row.First,
+            Last: row.Last,
+            Middle: row.Middle,
+            Nickname: row.Nickname,
+          };
+          resolve(listHandle);
+        }
+      });
+    });
+  }
+
+  public async getContactsFromNumbers(
+    h_id: string,
+  ): Promise<Record<string, ListHandle>> {
+    return new Promise<Record<string, ListHandle>>((resolve, reject) => {
+      const query = `SELECT abp.First, abp.Last, abp.Middle, abp.Nickname, abmv.value
+      FROM ${ABPERSON} abp
+      JOIN ${ABMULTIVALUE} abmv ON abp.ROWID = abmv.record_id
+      WHERE abmv.value IN  ('${h_id}')`;
+      this.addressDB.all(query, (err: Error | null, rows: any[]) => {
+        if (err) {
+          reject('Error executing query: ' + err.message);
+        } else if (!rows) {
+          resolve(undefined);
+        } else {
+          const listHandles: Record<string, ListHandle> = rows.reduce(
+            (acc: Record<string, ListHandle>, row) => {
+              acc[row.value] = {
+                id: row.value,
+                First: row.First,
+                Last: row.Last,
+                Middle: row.Middle,
+                Nickname: row.Nickname,
+              };
+              return acc;
+            },
+            {},
+          );
+          resolve(listHandles);
+        }
+      });
+    });
+  }
+
+  public async getChatPreviews(): Promise<EarlyChatPreview[]> {
+    console.log('Getting Chats');
+    return new Promise<EarlyChatPreview[]>((resolve, reject) => {
+      const query = `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
           FROM ${CHAT} c 
           JOIN ${CHAT_HANDLE_JOIN} chj ON c.ROWID = chj.chat_id 
           JOIN ${HANDLE} h ON chj.handle_id = h.ROWID 
           GROUP BY c.ROWID, c.last_read_message_timestamp, c.service_name, c.display_name`;
       this.chatDB.all(query, (err: Error | null, rows: any[]) => {
-          if (err) {
-              reject('Error executing query: ' + err.message);
-          } else {
-              const chatPreviews: ChatPreview[] = rows.map(row => ({
-                  CHATID: row.CHATID,
-                  last_read_message_timestamp: row.last_read_message_timestamp,
-                  service_name: row.service_name,
-                  display_name: row.display_name,
-                  // Parse handle_ids string into a Record<number, string>
-                  handle_ids: this.parseHandleIds(row.handle_ids)
-              }));
-              console.log(chatPreviews.length);
-              resolve(chatPreviews);
-          }
+        if (err) {
+          reject('Error executing query: ' + err.message);
+        } else {
+          const chatPreviews: EarlyChatPreview[] = rows.map((row) => ({
+            CHATID: row.CHATID,
+            last_read_message_timestamp: row.last_read_message_timestamp,
+            service_name: row.service_name,
+            display_name: row.display_name,
+            // Parse handle_ids string into a Record<number, string>
+            handle_ids: this.parseHandleIds(row.handle_ids),
+          }));
+          resolve(chatPreviews);
+        }
       });
-  });
-}
+    });
+  }
 
-public async getChatPreview(chat_id: number): Promise<ChatPreview> {
-  console.log("Getting Chat");
-  return new Promise<ChatPreview>((resolve, reject) => {
-      const query =
-          `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
+  public async getChatPreviewsWithHandles(): Promise<ChatPreview[]> {
+    try {
+      const chatPreviews = await this.getChatPreviews();
+      const allHandleIDs = Array.from(
+        new Set(
+          chatPreviews.flatMap((preview) => Object.values(preview.handle_ids)),
+        ),
+      );
+      const handlevalues = await this.getHandleValues(allHandleIDs);
+
+      return chatPreviews.map((preview) => ({
+        ...preview,
+        handle_ids: Object.entries(preview.handle_ids).reduce(
+          (acc: Record<number, ListHandle>, [handleID, handleValue]) => {
+            const handleData = handlevalues[handleValue] || {
+              id: handleValue,
+              First: undefined,
+              Last: undefined,
+              Middle: undefined,
+              Nickname: undefined,
+            };
+            acc[Number(handleID)] = handleData;
+            return acc;
+          },
+          {},
+        ),
+      }));
+    } catch (error) {
+      console.error('Error fetching chat previews with handles', error);
+      throw error;
+    }
+  }
+
+  public async getChatPreviewWithHandles(
+    chat_id: number,
+  ): Promise<ChatPreview> {
+    try {
+      const chatPreview = await this.getChatPreview(chat_id);
+      const allHandleIDs = Array.from(Object.values(chatPreview.handle_ids));
+      const handlevalues = await this.getHandleValues(allHandleIDs);
+
+      return {
+        ...chatPreview,
+        handle_ids: Object.entries(chatPreview.handle_ids).reduce(
+          (acc: Record<number, ListHandle>, [handleID, handleValue]) => {
+            const handleData = handlevalues[handleValue] || {
+              id: handleValue,
+              First: undefined,
+              Last: undefined,
+              Middle: undefined,
+              Nickname: undefined,
+            };
+            acc[Number(handleID)] = handleData;
+            return acc;
+          },
+          {},
+        ),
+      };
+    } catch (error) {
+      console.error('Error fetching chat previews with handles', error);
+      throw error;
+    }
+  }
+
+  public async getHandleValues(
+    hid: string[],
+  ): Promise<Record<number, ListHandle>> {
+    return new Promise<Record<number, ListHandle>>((resolve, reject) => {
+      const query = `SELECT abp.First, abp.Last, abp.Middle, abp.Nickname, abmv.value
+      FROM ${ABPERSON} abp
+      JOIN ${ABMULTIVALUE} abmv ON abp.ROWID = abmv.record_id
+      WHERE abmv.value IN (${hid.map((id) => `'${id}'`).join(', ')})`;
+      this.addressDB.all(query, (err: Error | null, rows: any[]) => {
+        if (err) {
+          reject('Error executing query: ' + err.message);
+        } else if (!rows) {
+          resolve(undefined);
+        } else {
+          const listHandles: Record<string, ListHandle> = rows.reduce(
+            (acc: Record<string, ListHandle>, row) => {
+              acc[row.value] = {
+                id: row.value,
+                First: row.First,
+                Last: row.Last,
+                Middle: row.Middle,
+                Nickname: row.Nickname,
+              };
+              return acc;
+            },
+            {},
+          );
+          resolve(listHandles);
+        }
+      });
+    });
+  }
+
+  public async getChatPreview(chat_id: number): Promise<EarlyChatPreview> {
+    console.log('Getting Chat');
+    return new Promise<EarlyChatPreview>((resolve, reject) => {
+      const query = `SELECT c.ROWID AS CHATID, c.last_read_message_timestamp, c.service_name, c.display_name, GROUP_CONCAT(h.ROWID || ':' || h.id) AS handle_ids 
           FROM ${CHAT} c 
           JOIN ${CHAT_HANDLE_JOIN} chj ON c.ROWID = chj.chat_id 
           JOIN ${HANDLE} h ON chj.handle_id = h.ROWID 
@@ -72,36 +237,35 @@ public async getChatPreview(chat_id: number): Promise<ChatPreview> {
           GROUP BY c.ROWID, c.last_read_message_timestamp, c.service_name, c.display_name`;
 
       this.chatDB.get(query, (err: Error | null, row: any) => {
-          if (err) {
-              reject('Error executing query: ' + err.message);
-          } else if (!row) {
-              reject('No chat found with the given chat_id');
-          } else {
-              const chatPreview: ChatPreview = {
-                  CHATID: row.CHATID,
-                  last_read_message_timestamp: row.last_read_message_timestamp,
-                  service_name: row.service_name,
-                  display_name: row.display_name,
-                  // Parse handle_ids string into a Record<number, string>
-                  handle_ids: this.parseHandleIds(row.handle_ids)
-              };
-              resolve(chatPreview);
-          }
+        if (err) {
+          reject('Error executing query: ' + err.message);
+        } else if (!row) {
+          reject('No chat found with the given chat_id');
+        } else {
+          const chatPreview: EarlyChatPreview = {
+            CHATID: row.CHATID,
+            last_read_message_timestamp: row.last_read_message_timestamp,
+            service_name: row.service_name,
+            display_name: row.display_name,
+            // Parse handle_ids string into a Record<number, string>
+            handle_ids: this.parseHandleIds(row.handle_ids),
+          };
+          resolve(chatPreview);
+        }
       });
-  });
-}
+    });
+  }
 
-
-private parseHandleIds(handleIdsString: string): Record<number, string> {
-  const handleIdsArray: string[] = handleIdsString.split(',');
-  const handleIdsRecord: Record<number, string> = {};
-  for (const handleIdString of handleIdsArray) {
+  private parseHandleIds(handleIdsString: string): Record<number, string> {
+    const handleIdsArray: string[] = handleIdsString.split(',');
+    const handleIdsRecord: Record<number, string> = {};
+    for (const handleIdString of handleIdsArray) {
       const [rowId, id]: string[] = handleIdString.split(':');
       const handleId: number = parseInt(rowId);
       handleIdsRecord[handleId] = id;
+    }
+    return handleIdsRecord;
   }
-  return handleIdsRecord;
-}
 
   public async getMessageIDsFromChatID(chat_id: number): Promise<number[]> {
     return new Promise((resolve, reject) => {

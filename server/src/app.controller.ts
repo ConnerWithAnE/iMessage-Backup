@@ -13,12 +13,22 @@ export class AppController {
 
   @Get('chats/previews')
   async getChatPreviews() {
-    return this.appService.getChatPreviews();
+    return this.appService.getChatPreviewsWithHandles();
   }
 
   @Get('chats/preview/:chatId')
   async getChatPreview(@Param('chatId') chatId: number) {
-    return this.appService.getChatPreview(chatId);
+    return this.appService.getChatPreviewWithHandles(chatId);
+  }
+
+  @Get('contacts/listhandle/:handleId')
+  async getListHandle(@Param('handleId') handleId: string) {
+    return this.appService.getHandleContact(handleId);
+  }
+
+  @Get('contacts/listhandles/:handleIds')
+  async getListHandles(@Param('handleIds') handleIds: string) {
+    return this.appService.getHandleContacts(handleIds);
   }
 
 }

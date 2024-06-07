@@ -7,7 +7,20 @@ interface ChatPanelProps {
 
 const ChatPanel = ({chatInfo}: ChatPanelProps) => {
 
-    const handleIds = Object.values(chatInfo?.handle_ids || {});
+    const handleIds = Object.values(chatInfo?.handle_ids || {})
+    .map((handleId) => {
+        let name;
+        if (handleId.Nickname) {
+            name = handleId.Nickname;
+        } else {
+            const first = handleId.First || "";
+            const last = handleId.Last || "";
+            name =
+                `${first} ${last}`.trim() ||
+                handleId.id;
+        }
+        return name;
+    })
 
     return (
         <div className='grid grid-cols-6 '>

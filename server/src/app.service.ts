@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import * as sqlite3 from 'sqlite3';
 import { MessageHandler } from './message-handler';
+import { DBSetup } from './initialDBSetup';
 
 @Injectable()
 export class AppService {
@@ -18,9 +19,15 @@ export class AppService {
       this.manifest_db,
       this.address_db,
     );
+
+    
+
   }
 
   async getMessagesByChatId(chatId: number) {
+    const db = new DBSetup();
+    db.processAttatchments();
+
     const messageIds =
       await this.messageHandler.getMessageIDsFromChatID(chatId);
     return this.messageHandler.getFractionOfMessagesFromIDs(messageIds, 1);

@@ -13,3 +13,7 @@ export const RECOVERABLE_MESSAGE: string = 'chat_recoverable_message_join';
 
 export const ABPERSON: string ='ABPerson';
 export const ABMULTIVALUE: string = 'ABMultiValue';
+
+// MANIFEST.DB
+
+export const FILES: string = 'Files';

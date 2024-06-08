@@ -16,10 +16,10 @@ export default function Sidebar() {
                 <div className='mr-2 text-3xl'><HiOutlineChat /></div>
                 <div className='text-left'>Messages</div>
             </Link>
-            <div className='flex items-center p-3 hover:bg-slate-100 rounded-e-xl'>
+            <Link to={`/contacts`} className={`flex items-center p-3 hover:bg-slate-100 rounded-e-xl ${selectedTab === 'contacts' ? 'bg-slate-200' : ''}`} onClick={() => setSelectedTab('contacts')}>
                 <div className='mr-2 text-3xl'><PiAddressBook /></div>
                 <div className='text-left'>Contacts</div>
-            </div>
+            </Link>
         </div>
     )
 }

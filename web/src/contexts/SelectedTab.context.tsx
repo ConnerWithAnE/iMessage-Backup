@@ -20,7 +20,7 @@ export const useSelectedTab = () => {
 };
 
 export const SelectedTabProvider: React.FC<SelectedTabProviderProps> = ({ children }) => {
-    const [selectedTab, setSelectedTab] = useState('');
+    const [selectedTab, setSelectedTab] = useState('messages');
 
     return (
         <SelectedTabContext.Provider value={{ selectedTab, setSelectedTab }}>

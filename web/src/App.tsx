@@ -7,32 +7,47 @@ import React from "react";
 import { ChatPreviewContext } from "./contexts/ChatPreview.context";
 import { ChatPreview } from "./interfaces/chat_preview.interface";
 import Sidebar from "./components/Navigation/SideBar";
-import { SelectedTabProvider } from './contexts/SelectedTab.context';
+import { SelectedTabProvider } from "./contexts/SelectedTab.context";
+import ContactList from "./components/ContactList/ContactList";
 
 function App() {
-    const [chatPreview, setChatPreview] = React.useState<ChatPreview | null>(null);
+    const [chatPreview, setChatPreview] = React.useState<ChatPreview | null>(
+        null
+    );
 
     return (
         <BrowserRouter>
             <div className="flex flex-col h-screen">
                 <Topbar />
-                <div className="flex-grow overflow-hidden flex">
-                    <div className="grid grid-cols-8 flex-grow">
-                        <div className="col-span-1">
-                            <SelectedTabProvider>
-                            <Sidebar />
-                            </SelectedTabProvider>
+                <SelectedTabProvider>
+                    <div className="flex-grow overflow-hidden flex">
+                        <div className="grid grid-cols-8 flex-grow">
+                            <div className="col-span-1">
+                                <Sidebar />
                             </div>
-                        <div className="col-span-7 pl-5 flex flex-col h-full">
-                            <ChatPreviewContext.Provider value={{ chatPreview, setChatPreview }}>
-                                <Routes>
-                                    <Route path="/chat/:id" element={<Chat />}></Route>
-                                    <Route path="/list" element={<ChatList />}></Route>
-                                </Routes>
-                            </ChatPreviewContext.Provider>
+                            <div className="col-span-7 pl-5 flex flex-col h-full">
+                                <ChatPreviewContext.Provider
+                                    value={{ chatPreview, setChatPreview }}
+                                >
+                                    <Routes>
+                                        <Route
+                                            path="/chat/:id"
+                                            element={<Chat />}
+                                        ></Route>
+                                        <Route
+                                            path="/list"
+                                            element={<ChatList />}
+                                        ></Route>
+                                        <Route
+                                            path="/contacts"
+                                            element={<ContactList />}
+                                        ></Route>
+                                    </Routes>
+                                </ChatPreviewContext.Provider>
+                            </div>
                         </div>
                     </div>
-                </div>
+                </SelectedTabProvider>
             </div>
         </BrowserRouter>
     );

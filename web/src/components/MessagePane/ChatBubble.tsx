@@ -20,12 +20,25 @@ const ChatBubble = ({ children, message, handle, prevMessageID }: ChatBubbleProp
     const bubblePosition = sender ? "items-end" : "items-start";
     const bubbleAlign = sender ? "float-end" : "float-start";
 
+    const options: Intl.DateTimeFormatOptions = {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        timeZone: 'America/Regina',
+      };
+
     return (
         
         <div>
-                  <div className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} mt-4 py-2 px-4`}>{ message.handle_id === prevMessageID ? "" : (sender ? "Me" : handle)}</div>
+            <div>
+                  <div className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} mt-4 py-2 px-4 text-gray-800`}>{ message.handle_id === prevMessageID ? "" : (sender ? "Me" : handle)}</div>
+                  
+                  </div>
         <div
-            className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} mb-4 px-4 py-2 rounded-2xl ${bubbleStyle} shadow-md`}
+            className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} px-4 py-2 rounded-2xl ${bubbleStyle} shadow-md`}
         >
             <div className="relative">
                 <div className={`absolute inset-0 flex ${bubblePosition}`}>
@@ -35,7 +48,9 @@ const ChatBubble = ({ children, message, handle, prevMessageID }: ChatBubbleProp
                     <div className="text-left whitespace-pre-line">{children}</div>
                 </div>
             </div>
+            
         </div>
+        <div className={`${sender ? 'ml-[50%] float-end' : 'mr-[50%]'}  text-sm text-slate-400`}>{new Date((message.date / 1000000000 + Date.parse('2001-01-01') / 1000) * 1000).toLocaleString('en-CA', options)}</div>
         </div>
     );
 };

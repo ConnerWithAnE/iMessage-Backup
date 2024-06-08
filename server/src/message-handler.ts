@@ -342,6 +342,11 @@ export class MessageHandler {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
+          rows.forEach((row) => {
+            if (row.cache_has_attachments) {
+              
+            }
+          })
           console.log(rows.length);
           resolve(rows);
         }

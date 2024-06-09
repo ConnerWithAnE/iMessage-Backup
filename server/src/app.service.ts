@@ -25,8 +25,8 @@ export class AppService {
   }
 
   async getMessagesByChatId(chatId: number) {
-    const db = new DBSetup();
-    db.processAttatchments();
+    //const db = new DBSetup();
+    //db.createNewDatabase();
 
     const messageIds =
       await this.messageHandler.getMessageIDsFromChatID(chatId);

@@ -37,34 +37,6 @@ const ChatSliver = ({ preview }: ContactSliverProps) => {
                               .join(",")
                         : preview.display_name}
                 </div>
-                <div className="flex justify-center items-center pr-5">
-                    <Link
-                        to={`/photos/${preview.CHATID}`}
-                        className="h-full hover:bg-slate-200 p-2 rounded-xl"
-                        onMouseEnter={() => setIsButton1Hovered(true)}
-                        onMouseLeave={() => setIsButton1Hovered(false)}
-                    >
-                        <button>Attachments</button>
-                    </Link>
-                    <div className="border-r border-r-black px-2"></div>
-                    <Link
-                        to={`/links/${preview.CHATID}`}
-                        className="h-full hover:bg-slate-200 p-2 rounded-xl"
-                        onMouseEnter={() => setIsButton1Hovered(true)}
-                        onMouseLeave={() => setIsButton1Hovered(false)}
-                    >
-                        <button>Links</button>
-                    </Link>
-                    <div className="border-r-black px-2"></div>
-                    <Link
-                        to={`/button3/${preview.CHATID}`}
-                        className="h-full hover:bg-slate-200 p-2 rounded-xl"
-                        onMouseEnter={() => setIsButton1Hovered(true)}
-                        onMouseLeave={() => setIsButton1Hovered(false)}
-                    >
-                        <button>Button 3</button>
-                    </Link>
-                </div>
             </div>
         </Link>
     );

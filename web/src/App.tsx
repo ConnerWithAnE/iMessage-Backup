@@ -9,6 +9,7 @@ import { ChatPreview } from "./interfaces/chat_preview.interface";
 import Sidebar from "./components/Navigation/SideBar";
 import { SelectedTabProvider } from "./contexts/SelectedTab.context";
 import ContactList from "./components/ContactList/ContactList";
+import ContactPage from "./components/ContactList/ContactPage";
 
 function App() {
     const [chatPreview, setChatPreview] = React.useState<ChatPreview | null>(
@@ -17,7 +18,7 @@ function App() {
 
     return (
         <BrowserRouter>
-            <div className="flex flex-col h-screen">
+            <div className="flex flex-col h-[100%]">
                 <Topbar />
                 <SelectedTabProvider>
                     <div className="flex-grow overflow-hidden flex">
@@ -40,7 +41,7 @@ function App() {
                                         ></Route>
                                         <Route
                                             path="/contacts"
-                                            element={<ContactList />}
+                                            element={<ContactPage />}
                                         ></Route>
                                     </Routes>
                                 </ChatPreviewContext.Provider>

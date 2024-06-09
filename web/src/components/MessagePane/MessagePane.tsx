@@ -38,7 +38,8 @@ export default function MessagePane({ id }: MessagePaneProps) {
                             `http://localhost:3000/messages/${id}`
                         );
                         if (messageResponse.ok) {
-                            const data = await messageResponse.json();                            setMessages(data); // Ensure messages are in the correct order
+                            const data = await messageResponse.json();
+                            setMessages(data); // Ensure messages are in the correct order
                         }
                     } catch (error) {
                         console.error("Error fetching messages", error);
@@ -140,9 +141,9 @@ export default function MessagePane({ id }: MessagePaneProps) {
     }, [renderedMessages]);
 
     return (
-        <div className="flex flex-col h-[800px] mb-5">
+        <div className="flex flex-col h-[85vh]">
             <div className="items-center border-b border-b-gray-300 flex-shrink-0">
-                <ChatPanel chatInfo={chatPreview}/>
+                <ChatPanel chatInfo={chatPreview} />
             </div>
             <div
                 className="chat-container flex-grow overflow-y-auto"
@@ -164,10 +165,33 @@ export default function MessagePane({ id }: MessagePaneProps) {
                                 message={message}
                                 handle={
                                     chatPreview?.handle_ids[message.handle_id]
-                                        ? chatPreview.handle_ids[message.handle_id].Nickname ||
-                                          (chatPreview.handle_ids[message.handle_id].First && chatPreview.handle_ids[message.handle_id].Last
-                                            ? `${chatPreview.handle_ids[message.handle_id].First} ${chatPreview.handle_ids[message.handle_id].Last}`
-                                            : (chatPreview.handle_ids[message.handle_id].First || chatPreview.handle_ids[message.handle_id].Last || chatPreview.handle_ids[message.handle_id].id))
+                                        ? chatPreview.handle_ids[
+                                              message.handle_id
+                                          ].Nickname ||
+                                          (chatPreview.handle_ids[
+                                              message.handle_id
+                                          ].First &&
+                                          chatPreview.handle_ids[
+                                              message.handle_id
+                                          ].Last
+                                              ? `${
+                                                    chatPreview.handle_ids[
+                                                        message.handle_id
+                                                    ].First
+                                                } ${
+                                                    chatPreview.handle_ids[
+                                                        message.handle_id
+                                                    ].Last
+                                                }`
+                                              : chatPreview.handle_ids[
+                                                    message.handle_id
+                                                ].First ||
+                                                chatPreview.handle_ids[
+                                                    message.handle_id
+                                                ].Last ||
+                                                chatPreview.handle_ids[
+                                                    message.handle_id
+                                                ].id)
                                         : undefined // Fallback to handle_id if not found in chatPreview.handle_ids
                                 }
                                 prevMessageID={prevMessageID}

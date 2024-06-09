@@ -14,7 +14,7 @@ const ChatBubble = ({ children, message, handle, prevMessageID }: ChatBubbleProp
 
     const sender = message.is_from_me;
     const bubbleStyle = sender
-        ? "bg-blue-500 text-white self-end"
+        ? `${message.service === 'iMessage' ? "bg-blue-500" : "bg-green-500"} text-white self-end`
         : "bg-gray-200 text-gray-700";
 
     const bubblePosition = sender ? "items-end" : "items-start";

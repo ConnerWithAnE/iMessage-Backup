@@ -15,7 +15,7 @@ export default function ChatList() {
         const fetchChats = async () => {
             try {
                 const response = await fetch(
-                    "http://localhost:3000/chats/previews"
+                    "http://localhost:3000/contacts/previews"
                 );
                 if (response.ok) {
                     const data = await response.json();
@@ -30,7 +30,7 @@ export default function ChatList() {
     }, []);
 
     return (
-        <div className="w-full h-[800px] overflow-y-auto bg-slate-100 rounded-xl py-5">
+        <div className="w-full h-[85vh] overflow-y-auto bg-slate-100 rounded-xl py-5">
             <ContactPanel />
             <div>
             {chatPreviews.map((preview) => (

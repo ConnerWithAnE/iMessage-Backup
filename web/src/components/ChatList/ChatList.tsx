@@ -30,7 +30,8 @@ export default function ChatList() {
     }, []);
 
     return (
-        <div className="w-full h-[800px] overflow-y-auto bg-slate-100 rounded-xl py-5">
+        <div className="w-full h-[85vh] flex flex-col overflow-y-auto bg-slate-100 rounded-xl py-5"
+        >
             {chatPreviews.map((preview) => (
                 <div key={preview.CHATID}>
                     <ChatSliver preview={preview} />

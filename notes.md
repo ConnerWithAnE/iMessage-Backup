@@ -10,6 +10,19 @@ So in the table each chat_id has many corresponding message_ids
 
 Like that
 
+Needed for Contacts
+
+Steps:
+1. Get all from ABPerson
+ - ROWID  - FirstPhonetic
+ - First  - etc..
+ - Last
+ - Middle
+
+2. For each ROWID check ABMultiValue
+ - Get each row, 
+
+
 
 
 What do we want for messages table

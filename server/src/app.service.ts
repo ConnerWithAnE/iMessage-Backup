@@ -9,6 +9,7 @@ export class AppService {
   private manifest_db: sqlite3.Database;
   private address_db: sqlite3.Database;
   private messageHandler: MessageHandler;
+  private dbSetup: DBSetup;
 
   constructor() {
     this.chat_db = new sqlite3.Database('./data/chat.db');
@@ -19,15 +20,13 @@ export class AppService {
       this.manifest_db,
       this.address_db,
     );
+    this.dbSetup = new DBSetup();
 
     
 
   }
 
   async getMessagesByChatId(chatId: number) {
-    //const db = new DBSetup();
-    //db.createNewDatabase();
-
     const messageIds =
       await this.messageHandler.getMessageIDsFromChatID(chatId);
     return this.messageHandler.getFractionOfMessagesFromIDs(messageIds, 1);
@@ -47,5 +46,10 @@ export class AppService {
 
   async getHandleContacts(h_id: string) {
     return this.messageHandler.getContactsFromNumbers(h_id);
+  }
+
+  async getAttachmentTest() {
+    this.dbSetup.createNewDatabase();
+    return this.dbSetup.process();
   }
 }

@@ -7,6 +7,15 @@ export interface Handle {
   service: Service;
 }
 
+export interface HandleData {
+  OLD_ROWID: number;
+  id: string;
+  country: string;
+  service: string;
+  uncanonicalized_id: string;
+  person_centric_id: string;
+}
+
 export function createHandleInstance(): Handle {
   return {
       ROWID: 0,

@@ -31,4 +31,9 @@ export class AppController {
     return this.appService.getHandleContacts(handleIds);
   }
 
+  @Get('attachments/test')
+  async getAttachmentTests() {
+    return this.appService.getAttachmentTest();
+  }
+
 }

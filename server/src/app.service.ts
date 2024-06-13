@@ -12,7 +12,7 @@ export class AppService {
   private dbSetup: DBSetup;
 
   constructor() {
-    this.chat_db = new sqlite3.Database('./data/chat.db');
+    this.chat_db = new sqlite3.Database('./data/Backup.db');
     this.manifest_db = new sqlite3.Database('./data/Manifest.db');
     this.address_db = new sqlite3.Database('./data/AddressBook.db');
     this.messageHandler = new MessageHandler(
@@ -49,7 +49,7 @@ export class AppService {
   }
 
   async getAttachmentTest() {
-    this.dbSetup.createNewDatabase();
+    await this.dbSetup.createNewDatabase();
     return this.dbSetup.process();
   }
 }

@@ -28,6 +28,7 @@ import * as path from 'node:path';
 import { ChatData } from './interfaces/chat';
 import { MessageData } from './interfaces/message.interface';
 import { HandleData } from './interfaces/handle.interface';
+import { rejects } from 'node:assert';
 
 interface idkyet {
   MESID: number;
@@ -93,18 +94,43 @@ export class DBSetup {
   private addressDB: Database;
 
   private backupDB: Database;
+  private guidTimeMod: number;
+  private backupDir: string;
 
   constructor() {
     this.chatDB = new Database('./data/chat.db');
     this.manifestDB = new Database('./data/Manifest.db');
     this.addressDB = new Database('./data/AddressBook.db');
+    // Value used to modify guid so that they stay unique
+    this.guidTimeMod = this.getCurrentUnixTime();
   }
 
   public async createNewDatabase() {
+    this.backupDir =
+      '/home/conner/iPhoneBackup/00008030-000445EC0C84802E/';
     this.backupDB = new Database('./data/Backup.db');
     console.log('created');
-    this.createTables();
+    await this.createTables();
     console.log('Tables Created');
+  }
+
+  private getCurrentUnixTime(): number {
+    const now = new Date();
+    return Math.floor(now.getTime() / 1000);
+  }
+
+  public async databaseBackup(): Promise<void> {
+    fs.copyFile(
+      'data/Backup.db',
+      `data/Backup-${Math.floor(Date.now() / 1000)}.db`,
+      (err) => {
+        if (err) {
+          console.error(`Error copying the database file: ${err}`);
+        } else {
+          console.log(`Database backup successful`);
+        }
+      },
+    );
   }
 
   public async process() {
@@ -114,7 +140,7 @@ export class DBSetup {
     console.log('Handles Migrated');
     await this.processMessages();
     console.log('Messages Migrated');
-    await this.processAttachments();
+    //await this.processAttachments();
     console.log('Attachments Migrated');
     await this.migrateChatHandleJoin();
     console.log('Chat Handle Links Migrated');
@@ -122,6 +148,9 @@ export class DBSetup {
     console.log('Chat Message Links Migrated');
     await this.migrateMessageAttachmentJoin();
     console.log('Message Attachment Links Migrated');
+    await this.updateMessageHandles();
+    console.log('Message Handles Updated');
+    await this.setROWIDFlag();
     console.log('\n\n\n Migration Complete');
   }
 
@@ -167,6 +196,7 @@ export class DBSetup {
 
   public async createTables() {
     try {
+      //await this.backupDB.exec(`DROP TABLE chat`);
       await this.checkAndCreateTable(
         this.backupDB,
         CHAT,
@@ -187,6 +217,7 @@ export class DBSetup {
         HANDLE,
         this.createHandleTable.bind(this),
       );
+      //await this.backupDB.exec('DROP TABLE chat_handle_join');
       await this.checkAndCreateTable(
         this.backupDB,
         CHAT_HANDLE_JOIN,
@@ -226,16 +257,52 @@ export class DBSetup {
     }
   }
 
+  private async setROWIDFlag() {
+    const tables = [CHAT, MESSAGE, ATTACHMENT, HANDLE]
+    return new Promise<void>((resolve, reject) => {
+      const updateROWID_SETQuery = (tableName: string) => `
+      UPDATE ${tableName}
+      SET ROWID_SET = 1`;
+
+      let completed = 0;
+      tables.forEach((table) => {
+        this.backupDB.run(
+          updateROWID_SETQuery(table),
+          (err: Error | null) => {
+            if (err) {
+              console.error(`Error updating table ${table}:`, err);
+              reject(err);
+            } else {
+              completed++;
+              if (completed === tables.length) {
+                resolve();
+              }
+            }
+          }
+        );
+      });
+    })
+  }
+
   // HANDLE PROCESSING
 
   public async processHandles(): Promise<void> {
     const handles: HandleData[] = await this.retrieveHandles();
-
+    let exists = 0;
+    
     for (const handle of handles) {
-      await this.insertHandle(handle);
+      // If this handle already exists
+      let existing = await this.checkHandleExists(handle.id, handle.service);
+      if (existing != 0) {
+        // Uses the new handle ROWID and then existing ROWID in the backup
+        // Updates the OLD_ROWID and sets ROWID_SET = 0 so the join processes it
+        await this.updateExistingHandle(handle.OLD_ROWID, existing);
+        exists++;
+      } else {
+        await this.insertHandle(handle);
+      }
     }
-
-    console.log('Chats Proccessed');
+    console.log(`${exists} Existing handles found. Updated OLD_ROWIDs..`);
   }
 
   public async retrieveHandles(): Promise<HandleData[]> {
@@ -249,6 +316,35 @@ export class DBSetup {
           resolve(rows);
         }
       });
+    });
+  }
+
+  private async checkHandleExists(
+    id: string,
+    service: string,
+  ): Promise<number> {
+    const testQuery = `SELECT ROWID FROM ${HANDLE} WHERE
+    id = ? AND
+    service = ?
+    `;
+    return new Promise<number>((resolve, reject) => {
+      this.backupDB.get(
+        testQuery,
+        [id, service],
+        (err: Error | null, row: any) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            // Convert row to boolean
+            if (!row) {
+              resolve(0);
+            } else {
+              resolve(row.ROWID);
+            }
+          }
+        },
+      );
     });
   }
 
@@ -281,27 +377,81 @@ export class DBSetup {
     });
   }
 
+  private async updateExistingHandle(
+    newOldRowID: number,
+    oldRowID: number,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const updateQuery = `
+      UPDATE ${HANDLE}
+      SET OLD_ROWID = ?,
+          ROWID_SET = 0
+      WHERE OLD_ROWID = ?`;
+      this.backupDB.run(
+        updateQuery,
+        [newOldRowID, oldRowID],
+        (err: Error | null) => {
+          if (err) {
+            console.error(`Error updating handle OLD_ROWID: ${err}`);
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  }
+
   // MESSAGE PROCESSING
 
   public async processMessages(): Promise<void> {
     const messageBar = new cliProgress.SingleBar(
       {
-        format: ' Inserting Messages | {bar} {percentage}% | {filename} | {value}/{total}',
+        format:
+          ' Inserting Messages | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
       },
       cliProgress.Presets.legacy,
     );
+  
+    let exists = 0;
     const messages: MessageData[] = await this.retrieveMessages();
-
-    console.log("Messages Retrieved")
-
+    console.log('Messages Retrieved');
+  
     messageBar.start(messages.length, 0, {
       speed: 'N/A',
     });
+  
+    const updateExistingMessages: Promise<void>[] = [];
+    const insertMessages: Promise<void>[] = [];
+  
     for (const message of messages) {
-      await this.insertMessage(message);
-      messageBar.increment({filename: message.OLD_ROWID});
+      const existing = await this.checkMessageExists(message.date, message.date_read, message.text);
+      if (existing != 0) {
+        updateExistingMessages.push(this.updateExistingMessage(message.OLD_ROWID, existing));
+        exists++;
+      } else {
+        insertMessages.push(this.insertMessage(message));
+      }
+      messageBar.increment({ filename: message.OLD_ROWID });
+    }
+  
+    // Execute updates and inserts in parallel with limited concurrency
+    await Promise.all(updateExistingMessages);
+    await Promise.all(insertMessages);
+  
+    console.log(`${exists} Existing messages found. Skipping...`);
+    messageBar.stop();
+  }
+  
+  private async executeInBatches(tasks: Promise<void>[], batchSize: number): Promise<void> {
+    let index = 0;
+    while (index < tasks.length) {
+      const batch = tasks.slice(index, index + batchSize);
+      await Promise.all(batch);
+      index += batchSize;
     }
   }
+  
 
   private async retrieveMessages(): Promise<MessageData[]> {
     return new Promise<MessageData[]>((resolve, reject) => {
@@ -317,10 +467,88 @@ export class DBSetup {
     });
   }
 
+  private async updateMessageHandles(): Promise<void> {
+    const messageHandleQuery = `
+    WITH handle_mapping AS (
+      SELECT m.ROWID AS message_rowid, h.ROWID AS handle_rowid
+      FROM message m
+      JOIN handle h ON m.handle_id = h.OLD_ROWID
+    )
+    UPDATE message
+    SET handle_id = (SELECT handle_rowid FROM handle_mapping WHERE message.ROWID = handle_mapping.message_rowid);
+  `;
+    return new Promise<void>((resolve, reject) => {
+      this.backupDB.serialize(() => {
+        this.backupDB.run('BEGIN TRANSACTION', (err) => {
+          if (err) {
+            console.error(`Error starting transaction ${err}`);
+            reject(err);
+            return;
+          }
+          this.backupDB.run(messageHandleQuery, (err) => {
+            if (err) {
+              console.error(
+                `Error updating handle_id in message table: ${err}`,
+              );
+              this.backupDB.run('ROLLBACK', (rollbackErr) => {
+                if (rollbackErr) {
+                  console.error(
+                    `Error rolling back transaction: ${rollbackErr}`,
+                  );
+                }
+              });
+              reject(err);
+            } else {
+              this.backupDB.run('COMMIT', (commitErr) => {
+                if (commitErr) {
+                  console.error(`Error committing transaction" ${commitErr}`);
+                  reject(commitErr);
+                } else {
+                  resolve();
+                }
+              });
+            }
+          });
+        });
+      });
+    });
+  }
+
+  private async checkMessageExists(
+    date: number,
+    date_read: number,
+    text: string,
+  ): Promise<number> {
+    const testQuery = `SELECT ROWID FROM ${MESSAGE} WHERE
+    date = ? AND
+    date_read = ? AND
+    text = ? AND
+    OLD_ROWID
+    `;
+    return new Promise<number>((resolve, reject) => {
+      this.backupDB.get(
+        testQuery,
+        [date, date_read, text],
+        (err: Error | null, row: any) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            if (!row) {
+              resolve(0)
+            } else {
+            // Convert row to boolean
+            resolve(row.ROWID)
+          }}
+        },
+      );
+    });
+  }
+
   private async insertMessage(message: MessageData): Promise<void> {
     return new Promise<void>((resolve, reject) => {
-      const insertQuery = `INSERT INTO message (
-        OLD_ROWID, guid, text, replace, service_center, handle_id, subject, country, 
+      const insertQuery = `INSERT INTO ${MESSAGE} (
+        OLD_ROWID, guid, text, replace, service_center, original_handle_id, handle_id, subject, country, 
         attributedBody, version, type, service, account, account_guid, error, date, 
         date_read, date_delivered, is_delivered, is_finished, is_emote, is_from_me, 
         is_empty, is_delayed, is_auto_reply, is_prepared, is_read, is_system_message, 
@@ -339,19 +567,23 @@ export class DBSetup {
         is_sos, is_critical, bia_reference_id, fallback_hash
       )
       VALUES (
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 
         ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
       )
     `;
+
       this.backupDB.run(
         insertQuery,
         [
           message.OLD_ROWID,
-          message.guid,
+          // Modifying the guid to a unique hour based value
+          // This allows for reply_to lookup functionality
+          `${message.guid}-${this.guidTimeMod}`,
           message.text,
           message.replace,
           message.service_center,
+          message.handle_id,
           message.handle_id,
           message.subject,
           message.country,
@@ -415,7 +647,7 @@ export class DBSetup {
           message.sr_ck_record_id,
           message.sr_ck_record_change_tag,
           message.is_corrupt,
-          message.reply_to_guid,
+          `${message.reply_to_guid}-${this.guidTimeMod}`,
           message.sort_id,
           message.is_spam,
           message.has_unseen_mention,
@@ -448,16 +680,68 @@ export class DBSetup {
     });
   }
 
+  private async updateExistingMessage(
+  newOldRowID: number,
+    oldRowID: number,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const updateQuery = `
+      UPDATE ${MESSAGE}
+      SET OLD_ROWID = ?,
+          ROWID_SET = 0
+      WHERE OLD_ROWID = ?`;
+      this.backupDB.run(
+        updateQuery,
+        [newOldRowID, oldRowID],
+        (err: Error | null) => {
+          if (err) {
+            console.error(`Error updating message OLD_ROWID: ${err}`);
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
+    });
+  }
+
   // CHAT PROCESSING
 
   public async processChats(): Promise<void> {
+    const chatBar = new cliProgress.SingleBar(
+      {
+        format:` Inserting Chats | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted} `
+      },
+      cliProgress.Presets.legacy,
+    );
+    let exists = 0;
     const chats: ChatData[] = await this.retrieveChats();
+    console.log(`   Chats Retrieved`);
+    
+    chatBar.start(chats.length, 0, {
+      speed: 'N/A',
+    });
+
+    const updateExistingChats: Promise<void>[] = [];
+    const insertChats: Promise<void>[] = [];
 
     for (const chat of chats) {
-      await this.insertChat(chat);
+      const existing = await this.checkChatExists(chat.guid, chat.group_id, chat.service_name);
+      if (existing != 0) {
+        updateExistingChats.push(this.updateExistingChat(chat.OLD_ROWID, exists));
+        exists++;
+      } else {
+        insertChats.push(this.insertChat(chat));
+      }
+      chatBar.increment();
     }
 
-    console.log('Chats Proccessed');
+    await this.executeInBatches(updateExistingChats, 10);
+    await this.executeInBatches(insertChats, 10);
+
+    chatBar.stop();
+
+    console.log(`${exists} Existing chats found. Updated ROWIDs..`);
   }
 
   private async retrieveChats(): Promise<ChatData[]> {
@@ -471,6 +755,62 @@ export class DBSetup {
           resolve(rows);
         }
       });
+    });
+  }
+
+  private async checkChatExists(
+    newGUID: string,
+    newGroupID: string,
+    newServiceName: string,
+  ): Promise<number> {
+    const testQuery = `SELECT ROWID FROM ${CHAT} WHERE
+    guid = ? AND
+    group_id = ? AND
+    service_name = ?
+    `;
+    return new Promise<number>((resolve, reject) => {
+      this.backupDB.get(
+        testQuery,
+        [newGUID, newGroupID, newServiceName],
+        (err: Error | null, row: any) => {
+          if (err) {
+            console.error(err);
+            reject(err);
+          } else {
+            // Convert row to boolean
+            if (!row) {
+              resolve(0);
+            } else {
+              resolve(row.ROWID);
+            }
+          }
+        },
+      );
+    });
+  }
+
+  private async updateExistingChat(
+    newOldRowID: number,
+    oldRowID: number,
+  ): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      const updateQuery = `
+      UPDATE ${CHAT}
+      SET OLD_ROWID = ?,
+          ROWID_SET = 0
+      WHERE OLD_ROWID = ?`;
+      this.backupDB.run(
+        updateQuery,
+        [newOldRowID, oldRowID],
+        (err: Error | null) => {
+          if (err) {
+            console.error(`Error updating chat OLD_ROWID: ${err}`);
+            reject(err);
+          } else {
+            resolve();
+          }
+        },
+      );
     });
   }
 
@@ -532,10 +872,12 @@ export class DBSetup {
 
   private getNewRowId(tableName: string, oldRowId: number): Promise<number> {
     return new Promise<number>((resolve, reject) => {
+      // Selects the rows with the given id that have not been proccessed
       const selectNewRowIdQuery = `
         SELECT ROWID 
         FROM ${tableName} 
         WHERE OLD_ROWID = ?
+        AND ROWID_SET = 0
       `;
 
       this.backupDB.get(
@@ -546,8 +888,13 @@ export class DBSetup {
             console.error(err);
             reject(err);
           } else {
+            console.log(tableName, oldRowId, row)
+            // Sets the row as processed
+            if (!row.ROWID){
+              console.log("missed")
+            } else {
             resolve(row.ROWID);
-          }
+          }}
         },
       );
     });
@@ -599,7 +946,7 @@ export class DBSetup {
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const insertNewJoinQuery = `
-        INSERT INTO chat_handle_join (chat_id, handle_id) 
+        INSERT OR IGNORE INTO chat_handle_join (chat_id, handle_id) 
         VALUES (?, ?)
       `;
 
@@ -640,10 +987,14 @@ export class DBSetup {
           try {
             for (const row of rows) {
               // Retrieve new ROWIDs for chat and handle using OLD_ROWID
+              const newQ = `
+              SELECT c.ROWID, m.ROWID
+              FROM ${CHAT} c
+              JOIN ${MESSAGE} m`
               const newChatId = await this.getNewRowId('chat', row.chat_id);
               const newMessageId = await this.getNewRowId(
                 'message',
-                row.handle_id,
+                row.message_id,
               );
               // Insert the new chat_handle_join pair
               await this.insertNewChatMessageJoin(
@@ -668,7 +1019,7 @@ export class DBSetup {
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const insertNewJoinQuery = `
-        INSERT INTO ${CHAT_MESSAGE_JOIN} (chat_id, message_id, message_date) 
+        INSERT OR IGNORE INTO ${CHAT_MESSAGE_JOIN} (chat_id, message_id, message_date) 
         VALUES (?, ?, ?)
       `;
 
@@ -738,7 +1089,7 @@ export class DBSetup {
   ): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const insertNewJoinQuery = `
-        INSERT INTO ${MESSAGE_ATTACHMENT_JOIN} (message_id, attachment_id) 
+        INSERT OR IGNORE INTO ${MESSAGE_ATTACHMENT_JOIN} (message_id, attachment_id) 
         VALUES (?, ?)
       `;
 
@@ -777,7 +1128,14 @@ export class DBSetup {
         if (err) {
           reject(`Could not create ${MESSAGE} table: ${err}`);
         } else {
-          resolve();
+          this.backupDB.exec(`CREATE INDEX IF NOT EXISTS idx_message_date_text ON ${MESSAGE}(date, text)`,(err) => {
+            if (err) {
+              console.error(`Error creating message index`);
+              reject(err);
+            } else {
+              resolve();
+            }
+          })
         }
       });
     });
@@ -905,7 +1263,7 @@ export class DBSetup {
         insertQuery,
         [
           attachment.OLD_ROWID,
-          attachment.guid,
+          `${attachment.guid}-${this.guidTimeMod}`,
           attachment.created_date,
           attachment.start_date,
           attachment.filename,
@@ -992,14 +1350,13 @@ export class DBSetup {
     fileID: string[],
     attachment: AppleAttachment,
   ): Promise<AppleAttachment> {
-    const backupDir: string =
-      '/home/conner/iPhoneBackup/00008030-000445EC0C84802E/'; // Adjust the path to your iPhone backup directory
+     // Adjust the path to your iPhone backup directory
 
     // Loop through each nested directory
     for (let i = 0; i < 256; i++) {
       const subdir: string = i.toString(16).padStart(2, '0'); // Convert the loop index to hexadecimal and pad with zeros
 
-      const dirPath = `${backupDir}${subdir}`;
+      const dirPath = `${this.backupDir}${subdir}`;
       const filesInDir = await fs.promises.readdir(dirPath);
       for (let file = 0; file < fileID.length; file++) {
         if (filesInDir.includes(fileID[file])) {
@@ -1070,12 +1427,11 @@ export class DBSetup {
     const filteredJoinedData: AppleAttachment[] = [];
     const fileCopyBar = new cliProgress.SingleBar(
       {
-        format: ' {bar} {percentage}% | {filename} | {value}/{total}',
+        format: 'Copying Accessible Attachments | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
       },
       cliProgress.Presets.legacy,
     );
-
-    console.log('Copying Accessible Attachments');
+    
     fileCopyBar.start(joinedData.length, 0, {
       speed: 'N/A',
     });
@@ -1102,14 +1458,16 @@ export class DBSetup {
     const fileMap = new Map<string, string[]>();
     const fileIDBar = new cliProgress.SingleBar(
       {
-        format: ' Getting fileIDs | {bar} {percentage}% | {filename} | {value}/{total}',
+        format:
+          ' Getting fileIDs | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
       },
       cliProgress.Presets.legacy,
     );
 
     const attachmentBar = new cliProgress.SingleBar(
       {
-        format: ' Getting Attachments | {bar} {percentage}% | {filename} | {value}/{total}',
+        format:
+          ' Getting Attachments | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
       },
       cliProgress.Presets.legacy,
     );
@@ -1125,7 +1483,7 @@ export class DBSetup {
         fileIDs.push(file.fileID);
       }
       fileMap.set(extractedPath, fileIDs);
-      fileIDBar.increment({filename: file.fileID});
+      fileIDBar.increment({ filename: file.fileID });
     }
 
     attachmentBar.start(attachments.length, 0, {
@@ -1155,7 +1513,7 @@ export class DBSetup {
 
       joinedData.push({ attachment, fileID: matchingFileIDs });
 
-      attachmentBar.increment({filename: attachment.filename});
+      attachmentBar.increment({ filename: attachment.filename });
     }
 
     return joinedData;

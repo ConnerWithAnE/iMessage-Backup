@@ -11,10 +11,12 @@ import {
 export const messageCreateQuery = `CREATE TABLE message (
   ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
   OLD_ROWID INTEGER,
+  ROWID_SET INTEGER DEFAULT 0,
   guid TEXT UNIQUE NOT NULL,
   text TEXT,
   replace INTEGER DEFAULT 0,
   service_center TEXT,
+  original_handle_id INTEGER DEFAULT 0,
   handle_id INTEGER DEFAULT 0,
   subject TEXT,
   country TEXT,
@@ -103,6 +105,7 @@ export const messageCreateQuery = `CREATE TABLE message (
 export const chatCreateQuery = `CREATE TABLE ${CHAT} 
 (ROWID INTEGER PRIMARY KEY AUTOINCREMENT, 
   OLD_ROWID INTEGER,
+  ROWID_SET INTEGER DEFAULT 0,
   guid TEXT UNIQUE NOT NULL, 
   style INTEGER, 
   state INTEGER, 
@@ -137,6 +140,7 @@ export const chatCreateQuery = `CREATE TABLE ${CHAT}
 export const handleCreateQuery = `CREATE TABLE ${HANDLE} 
 (ROWID INTEGER PRIMARY KEY AUTOINCREMENT UNIQUE,
   OLD_ROWID INTEGER, 
+  ROWID_SET INTEGER DEFAULT 0,
   id TEXT NOT NULL, 
   country TEXT, 
   service TEXT NOT NULL, 
@@ -147,6 +151,7 @@ export const handleCreateQuery = `CREATE TABLE ${HANDLE}
 export const attachmentCreateQuery = `CREATE TABLE ${ATTACHMENT} (
     ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
     OLD_ROWID INTEGER,
+    ROWID_SET INTEGER DEFAULT 0,
     guid TEXT UNIQUE NOT NULL,
     created_date INTEGER DEFAULT 0,
     start_date INTEGER DEFAULT 0,

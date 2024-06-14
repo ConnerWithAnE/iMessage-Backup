@@ -38,9 +38,12 @@ export default function MessagePane({ id }: MessagePaneProps) {
                             `http://localhost:3000/messages/${id}`
                         );
                         if (messageResponse.ok) {
+                            
                             const data = await messageResponse.json();
                             setMessages(data); // Ensure messages are in the correct order
+                            console.log(data[0])
                         }
+                        
                     } catch (error) {
                         console.error("Error fetching messages", error);
                     } finally {
@@ -150,6 +153,7 @@ export default function MessagePane({ id }: MessagePaneProps) {
                 ref={chatContainerRef}
             >
                 {renderedMessages.map((message: Message, index: number) => {
+                    console.log(message)
                     const prevMessageID =
                         index > 0
                             ? renderedMessages[index - 1].handle_id

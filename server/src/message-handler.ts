@@ -1,4 +1,5 @@
 import * as sqlite3 from 'sqlite3';
+import fs from 'fs';
 
 import {
   MESSAGE,
@@ -8,8 +9,14 @@ import {
   CHAT,
   ABMULTIVALUE,
   ABPERSON,
+  ATTACHMENT,
+  MESSAGE_ATTACHMENT_JOIN,
 } from './constants/tableNames';
-import { Message, createMessageInstance } from './interfaces/message.interface';
+import {
+  Message,
+  MessageSend,
+  createMessageInstance,
+} from './interfaces/message.interface';
 import { Handle, createHandleInstance } from './interfaces/handle.interface';
 import {
   ChatPreview,
@@ -338,17 +345,73 @@ export class MessageHandler {
       const rowIDList = message_ids.slice(0, numMessagesToRetrieve).join(',');
       const query = `SELECT ${columns} FROM ${MESSAGE} WHERE ROWID IN (${rowIDList})`;
 
-      this.chatDB.all(query, (err: Error | null, rows: Message[]) => {
+      this.chatDB.all(query, (err: Error | null, messageRows: Message[]) => {
         if (err) {
           reject('Error executing query: ' + err.message);
         } else {
-          rows.forEach((row) => {
+          const messageSendList: MessageSend[] = [];
+
+          messageRows.forEach(async (row) => {
+            const messageSend: MessageSend = { ...row, attachment: undefined };
+
             if (row.cache_has_attachments) {
-              
+              const cacheQuery = `
+              SELECT a.filename, a.mime_type, a.uti, a.transfer_name, a.total_bytes, a.is_sticker, a.hide_attachment
+              FROM ${ATTACHMENT} a
+              JOIN ${MESSAGE_ATTACHMENT_JOIN} ma ON a.ROWID = ma.attachment_id
+              WHERE ma.message_id = ?
+              `;
+              try {
+                const attachmentRow = await new Promise<any>(
+                  (resolve, reject) => {
+                    this.chatDB.get(
+                      cacheQuery,
+                      row.ROWID,
+                      (err: Error | null, attachmentRow: any) => {
+                        if (err) {
+                          reject(
+                            `Error getting attachment for message ${row.ROWID}: ${err}`,
+                          );
+                        } else {
+                          resolve(attachmentRow);
+                        }
+                      },
+                    );
+                  },
+                );
+                if (
+                  (attachmentRow &&
+                    attachmentRow.mime_type.startsWith('image')) ||
+                  attachmentRow.mime_type.startsWith('video')
+                ) {
+                  if (fs.existsSync(attachmentRow.filename)) {
+                    const fileData = fs.readFileSync(attachmentRow.filename);
+                    const base64Data = fileData.toString('base64');
+
+                    messageSend.attachment = {
+                      ROWID: attachmentRow.ROWID,
+                      filename: attachmentRow.filename,
+                      uti: attachmentRow.uti,
+                      transfer_name: attachmentRow.transfer_name,
+                      total_bytes: attachmentRow.total_bytes,
+                      mime_type: attachmentRow.mime_type,
+                      is_sticker: attachmentRow.is_sticker,
+                      hide_attachment: attachmentRow.hide_attachment,
+                      data: base64Data,
+                    };
+                  }
+                }
+              } catch (error) {
+                reject(
+                  `Error retrieving attachment details for message ${row.ROWID}: ${error}`,
+                );
+              }
             }
-          })
-          console.log(rows.length);
-          resolve(rows);
+            messageSendList.push(messageSend);
+          });
+
+          console.log(messageRows.length);
+          resolve(messageRows);
         }
       });
     });

@@ -1,4 +1,5 @@
 import { Service } from "../types/service";
+import { Attachment } from "./attachment";
 
 export interface Message {
     ROWID: number,
@@ -30,6 +31,22 @@ export interface Message {
     date_retracted: number,
     date_edited: number,
     part_count: number,
+}
+
+export interface MessageSend extends Message {
+    attachment: MessageAttachment | undefined
+}
+
+export interface MessageAttachment {
+    ROWID: number,
+    data: string,
+    filename: string,
+    uti: string,
+    mime_type: string,
+    transfer_name: string,
+    total_bytes: number,
+    is_sticker: boolean,
+    hide_attachment: boolean,
 }
 
 export interface MessageData {

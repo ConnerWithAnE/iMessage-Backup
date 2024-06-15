@@ -101,11 +101,10 @@ export class DBSetup {
     this.chatDB = new Database('./data/chat.db');
     this.manifestDB = new Database('./data/Manifest.db');
     this.addressDB = new Database('./data/AddressBook.db');
-
   }
 
   public async createNewDatabase() {
-    this.backupDir = '/home/conner/iPhoneBackup/00008030-000445EC0C84802E/';
+    this.backupDir = '/home/conner/iPhoneBackup/newerUpdate/00008030-000445EC0C84802E/';
     this.backupDB = new Database('./data/Backup.db');
     console.log('created');
     await this.createTables();
@@ -285,17 +284,17 @@ export class DBSetup {
   // HANDLE PROCESSING
 
   public async processHandles(): Promise<void> {
-    const handleBar = new cliProgress.SingleBar( // heh handle bar
-      {
-        format: ' Inserting Handles | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
-      }
-    )
+    const handleBar = new cliProgress.SingleBar({
+      // heh handle bar
+      format:
+        ' Inserting Handles | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
+    });
     const handles: HandleData[] = await this.retrieveHandles();
-    console.log("Handles Retrieved");
+    console.log('Handles Retrieved');
     let exists = 0;
 
     handleBar.start(handles.length, 0, {
-      speed: 'N/A'
+      speed: 'N/A',
     });
 
     const updateExistingHandles: Promise<void>[] = [];
@@ -307,7 +306,9 @@ export class DBSetup {
       if (existing != 0) {
         // Uses the new handle ROWID and then existing ROWID in the backup
         // Updates the OLD_ROWID and sets ROWID_SET = 0 so the join processes it
-        updateExistingHandles.push(this.updateExistingHandle(handle.OLD_ROWID, existing));
+        updateExistingHandles.push(
+          this.updateExistingHandle(handle.OLD_ROWID, existing),
+        );
         exists++;
       } else {
         insertHandles.push(this.insertHandle(handle));
@@ -424,7 +425,8 @@ export class DBSetup {
   public async processMessages() {
     const messageBar = new cliProgress.SingleBar(
       {
-        format: ' Inserting Messages | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
+        format:
+          ' {filename} | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
       },
       cliProgress.Presets.legacy,
     );
@@ -445,18 +447,18 @@ export class DBSetup {
         message.date,
         message.date_read,
         message.text,
+        message.OLD_ROWID,
       );
       if (existing != 0) {
-        
-          updateExistingMessages.push(
-            this.updateExistingMessage(message.OLD_ROWID, existing),
-          );
-        
+        updateExistingMessages.push(
+          this.updateExistingMessage(message.OLD_ROWID, existing),
+        );
+        messageBar.increment({ filename: `Skipping Message` });
         exists++;
       } else {
         insertMessages.push(this.insertMessage(message));
+        messageBar.increment({ filename: `Inserting Message` });
       }
-      messageBar.increment({ filename: message.OLD_ROWID });
     }
 
     // Execute updates and inserts in parallel with limited concurrency
@@ -465,7 +467,6 @@ export class DBSetup {
 
     messageBar.stop();
     console.log(`${exists} Existing messages found. Skipping...`);
-    
   }
 
   private async executeInBatches(
@@ -496,14 +497,39 @@ export class DBSetup {
 
   private async updateMessageHandles(): Promise<void> {
     const messageHandleQuery = `
-    WITH handle_mapping AS (
-      SELECT m.ROWID AS message_rowid, h.ROWID AS handle_rowid
-      FROM message m
-      JOIN handle h ON m.handle_id = h.OLD_ROWID
-    )
-    UPDATE message
-    SET handle_id = (SELECT handle_rowid FROM handle_mapping WHERE message.ROWID = handle_mapping.message_rowid);
-  `;
+      WITH handle_mapping AS (
+        SELECT 
+          m.ROWID AS message_rowid, 
+          CASE 
+            WHEN m.original_handle_id = 0 THEN 0 
+            ELSE h.ROWID 
+          END AS handle_rowid
+        FROM 
+          message m
+        LEFT JOIN 
+          handle h 
+        ON 
+          m.original_handle_id = h.OLD_ROWID
+        WHERE 
+          m.ROWID_SET = 0 
+          AND (m.original_handle_id = 0 OR h.ROWID_SET = 0)
+      )
+      UPDATE 
+        message
+      SET 
+        handle_id = (
+          SELECT 
+            handle_rowid 
+          FROM 
+            handle_mapping 
+          WHERE 
+            message.ROWID = handle_mapping.message_rowid
+        )
+      WHERE 
+        ROWID IN (SELECT message_rowid FROM handle_mapping)
+        AND original_handle_id != 0;
+    `;
+
     return new Promise<void>((resolve, reject) => {
       this.backupDB.serialize(() => {
         this.backupDB.run('BEGIN TRANSACTION', (err) => {
@@ -528,7 +554,7 @@ export class DBSetup {
             } else {
               this.backupDB.run('COMMIT', (commitErr) => {
                 if (commitErr) {
-                  console.error(`Error committing transaction" ${commitErr}`);
+                  console.error(`Error committing transaction: ${commitErr}`);
                   reject(commitErr);
                 } else {
                   resolve();
@@ -545,16 +571,18 @@ export class DBSetup {
     date: number,
     date_read: number,
     text: string,
+    ROWID: number,
   ): Promise<number> {
-    const testQuery = `SELECT ROWID FROM ${MESSAGE} WHERE
-    date = ? AND
+    const testQuery = `SELECT ROWID, text FROM ${MESSAGE} WHERE
+    (date = ? AND
     date_read = ? AND
-    text = ?
+    (text = ? OR text IS NULL))
+    OR ROWID = ?
     `;
     return new Promise<number>((resolve, reject) => {
       this.backupDB.get(
         testQuery,
-        [date, date_read, text],
+        [date, date_read, text, ROWID],
         (err: Error | null, row: any) => {
           if (err) {
             console.error(err);
@@ -759,7 +787,6 @@ export class DBSetup {
         chat.service_name,
       );
       if (existing != 0) {
-        
         updateExistingChats.push(
           this.updateExistingChat(chat.OLD_ROWID, existing),
         );
@@ -965,6 +992,7 @@ export class DBSetup {
             FROM ${CHAT} c
             JOIN ${HANDLE} h
             ON c.OLD_ROWID = ? AND h.OLD_ROWID = ?
+            WHERE c.ROWID_SET = 0 AND h.ROWID_SET = 0
             `;
             chatHandleBar.start(rows.length, 0, {
               speed: 'N/A',
@@ -1058,6 +1086,7 @@ export class DBSetup {
             FROM ${CHAT} c
             JOIN ${MESSAGE} m 
             ON c.OLD_ROWID = ? AND m.OLD_ROWID = ?
+            WHERE c.ROWID_SET = 0 AND m.ROWID_SET = 0
           `;
             chatMessageBar.start(rows.length, 0, {
               speed: 'N/A',
@@ -1154,6 +1183,7 @@ export class DBSetup {
             FROM ${MESSAGE} m
             JOIN ${ATTACHMENT} a
             ON m.OLD_ROWID = ? AND a.OLD_ROWID = ?
+            WHERE m.ROWID_SET = 0 AND a.ROWID_SET = 0
             `;
 
             messageAttachmentBar.start(rows.length, 0, {
@@ -1352,7 +1382,7 @@ export class DBSetup {
     const insertAttachments: Promise<void>[] = [];
 
     attachmentBar.start(attachments.length, 0, {
-      speed: 'N/A'
+      speed: 'N/A',
     });
     for (const attachment of attachments) {
       const existing = await this.checkAttachmentExists(
@@ -1481,7 +1511,7 @@ export class DBSetup {
           attachment.ck_sync_state,
           attachment.ck_server_change_token_blob,
           attachment.ck_record_id,
-          attachment.original_guid,
+          `${attachment.original_guid}-${this.guidTimeMod}`,
           attachment.sr_ck_sync_state,
           attachment.sr_ck_server_change_token_blob,
           attachment.sr_ck_record_id,
@@ -1551,7 +1581,7 @@ export class DBSetup {
   private async fileExistsForID(
     fileID: string[],
     attachment: AppleAttachment,
-  ): Promise<AppleAttachment> {
+  ): Promise<[AppleAttachment, boolean]> {
     // Adjust the path to your iPhone backup directory
 
     // Loop through each nested directory
@@ -1610,9 +1640,18 @@ export class DBSetup {
             destDir,
             attachment.filename.split('/').pop()!,
           );
+
+          // Check if the file already exists in the destination
+          if (fs.existsSync(filePath)) {
+            //console.log(`File already exists at ${filePath}, skipping copy.`);
+            attachment.filename = filePath;
+            return [attachment, true];
+          }
+
+          // File does not exist, copy it
           fs.copyFileSync(path.join(dirPath, fileID[file]), filePath);
           attachment.filename = filePath;
-          return attachment;
+          return [attachment, false];
         }
       }
 
@@ -1620,35 +1659,51 @@ export class DBSetup {
     }
     // File not found
     console.log(`File not found ${fileID}, ${attachment.transfer_name}`);
-    return attachment;
+    return [attachment, false];
   }
 
   private async filterAttachmentsWithSingleExistingFileID(
     joinedData: JoinedData[],
   ): Promise<AppleAttachment[]> {
     const filteredJoinedData: AppleAttachment[] = [];
+    let missing = 0;
     const fileCopyBar = new cliProgress.SingleBar(
       {
         format:
-          'Copying Accessible Attachments | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted}',
+          '  | {bar} {percentage}% | {value}/{total} | Duration: {duration_formatted} | ETA: {eta_formatted} | {filename}',
       },
       cliProgress.Presets.legacy,
     );
 
-    fileCopyBar.start(joinedData.length, 0, {
+    fileCopyBar.start(joinedData.length+1, 0, {
       speed: 'N/A',
     });
     for (const joinedItem of joinedData) {
       const { attachment, fileID } = joinedItem;
       if (fileID && fileID.length > 0) {
-        const ajdustedAttachment = await this.fileExistsForID(
+        const [ajdustedAttachment, exists] = await this.fileExistsForID(
           fileID,
           attachment,
         ); // Implement fileExistsForID method to check file existence
-        filteredJoinedData.push(ajdustedAttachment);
+        if (!exists) {
+          filteredJoinedData.push(ajdustedAttachment);
+          fileCopyBar.increment({
+            filename: `Copying Attachment ${attachment.transfer_name}`,
+          });
+        } else {
+          filteredJoinedData.push(ajdustedAttachment);
+          fileCopyBar.increment({
+            filename: `Attachment ${attachment.transfer_name} Exists`,
+          });
+        }
+      } else {
+        fileCopyBar.increment({ filename: `File Not Found` });
+        missing++;
       }
-      fileCopyBar.increment();
     }
+    fileCopyBar.increment({
+      filename: `Attachment Copy Complete | ${missing} Missing Files`,
+    });
     fileCopyBar.stop();
     return filteredJoinedData;
   }

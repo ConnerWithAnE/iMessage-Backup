@@ -10,6 +10,14 @@ So in the table each chat_id has many corresponding message_ids
 
 Like that
 
+
+Database Names:
+
+AddressBookImages.db = cd6702cea29fe89cf280a76794405adb17f9a0ee
+AddressBook.db = 31bb7ba8914766d4ba40d6dfb6113c8b614be442
+SMS.db = 3d0d7e5fb2ce288813306e4d4636395e047a3d28
+manifest.db = manifest.db
+
 Needed for Contacts
 
 Steps:

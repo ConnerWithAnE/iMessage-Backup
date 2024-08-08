@@ -1,5 +1,7 @@
 import * as sqlite3 from 'sqlite3';
-import fs from 'fs';
+import * as fs from 'fs';
+import heic2any from 'heic2any';
+import bPlistParser from 'bplist-parser';
 
 import {
   MESSAGE,
@@ -34,6 +36,8 @@ import {
 } from './interfaces/chat_handle.interface';
 import { rejects } from 'assert';
 import { ListHandle } from './interfaces/list_handle.interface';
+import { format } from 'path';
+import { parse } from "./streamtypedparser";
 
 export class MessageHandler {
   private chatDB: sqlite3.Database;
@@ -343,77 +347,118 @@ export class MessageHandler {
 
       // Take only the first portion of message IDs
       const rowIDList = message_ids.slice(0, numMessagesToRetrieve).join(',');
-      const query = `SELECT ${columns} FROM ${MESSAGE} WHERE ROWID IN (${rowIDList})`;
+      const query = `SELECT HEX(attributedBody) as hexAB, ${columns} FROM ${MESSAGE} WHERE ROWID IN (${rowIDList})`;
 
-      this.chatDB.all(query, (err: Error | null, messageRows: Message[]) => {
-        if (err) {
-          reject('Error executing query: ' + err.message);
-        } else {
-          const messageSendList: MessageSend[] = [];
+      this.chatDB.all(
+        query,
+        async (err: Error | null, messageRows: Message[]) => {
+          if (err) {
+            reject('Error executing query: ' + err.message);
+          } else {
+            const messageSendList: MessageSend[] = [];
 
-          messageRows.forEach(async (row) => {
-            const messageSend: MessageSend = { ...row, attachment: undefined };
+            
 
-            if (row.cache_has_attachments) {
-              const cacheQuery = `
-              SELECT a.filename, a.mime_type, a.uti, a.transfer_name, a.total_bytes, a.is_sticker, a.hide_attachment
-              FROM ${ATTACHMENT} a
-              JOIN ${MESSAGE_ATTACHMENT_JOIN} ma ON a.ROWID = ma.attachment_id
-              WHERE ma.message_id = ?
-              `;
-              try {
-                const attachmentRow = await new Promise<any>(
-                  (resolve, reject) => {
-                    this.chatDB.get(
-                      cacheQuery,
-                      row.ROWID,
-                      (err: Error | null, attachmentRow: any) => {
-                        if (err) {
-                          reject(
-                            `Error getting attachment for message ${row.ROWID}: ${err}`,
-                          );
-                        } else {
-                          resolve(attachmentRow);
-                        }
+            try {
+              await Promise.all(
+                messageRows.map(async (row: any) => {
+                  let messageSend: MessageSend = {
+                    ...row,
+                    attachment: undefined,
+                  };
+                  let base64Data: string;
+
+                  if (row.cache_has_attachments) {
+                    const cacheQuery = `
+                  SELECT a.ROWID, a.filename, a.mime_type, a.uti, a.transfer_name, a.total_bytes, a.is_sticker, a.hide_attachment
+                  FROM ${ATTACHMENT} a
+                  JOIN ${MESSAGE_ATTACHMENT_JOIN} ma ON a.ROWID = ma.attachment_id
+                  WHERE ma.message_id = ?
+                `;
+
+                    const attachmentRow = await new Promise<any>(
+                      (resolve, reject) => {
+                        this.chatDB.get(
+                          cacheQuery,
+                          row.ROWID,
+                          (err: Error | null, attachmentRow: any) => {
+                            if (err) {
+                              reject(
+                                `Error getting attachment for message ${row.ROWID}: ${err}`,
+                              );
+                            } else {
+                              resolve(attachmentRow);
+                            }
+                          },
+                        );
                       },
                     );
-                  },
-                );
-                if (
-                  (attachmentRow &&
-                    attachmentRow.mime_type.startsWith('image')) ||
-                  attachmentRow.mime_type.startsWith('video')
-                ) {
-                  if (fs.existsSync(attachmentRow.filename)) {
-                    const fileData = fs.readFileSync(attachmentRow.filename);
-                    const base64Data = fileData.toString('base64');
 
-                    messageSend.attachment = {
-                      ROWID: attachmentRow.ROWID,
-                      filename: attachmentRow.filename,
-                      uti: attachmentRow.uti,
-                      transfer_name: attachmentRow.transfer_name,
-                      total_bytes: attachmentRow.total_bytes,
-                      mime_type: attachmentRow.mime_type,
-                      is_sticker: attachmentRow.is_sticker,
-                      hide_attachment: attachmentRow.hide_attachment,
-                      data: base64Data,
-                    };
+                    if (
+                      attachmentRow &&
+                      attachmentRow.mime_type &&
+                      attachmentRow.mime_type.startsWith('image')
+                    ) {
+                      if (fs.existsSync(attachmentRow.filename)) {
+                        let fileData = fs.readFileSync(
+                          attachmentRow.filename,
+                        );
+                        /*
+                        if (attachmentRow.mime_type == 'image/heic') {
+                          const blobData = await heic2any({
+                            blob: new Blob([fileData]),
+                            toType: 'image/jpeg',
+                            
+                          });
+                          if (blobData instanceof Blob) {
+                            const dataBuffer = Buffer.from(await blobData.arrayBuffer());
+                            base64Data = dataBuffer.toString('base64');
+                            attachmentRow.mime_type = 'image/jpeg';
+                          }
+                          
+                        } else {
+                          */
+                          base64Data = fileData.toString('base64');
+                        
+                        
+                       
+
+                        messageSend = {
+                          ...row,
+                          attachment: {
+                            ROWID: attachmentRow.ROWID,
+                            filename: attachmentRow.filename,
+                            uti: attachmentRow.uti,
+                            transfer_name: attachmentRow.transfer_name,
+                            total_bytes: attachmentRow.total_bytes,
+                            mime_type: attachmentRow.mime_type,
+                            is_sticker: attachmentRow.is_sticker,
+                            hide_attachment: attachmentRow.hide_attachment,
+                            data: base64Data,
+                          },
+                        };
+                      }
+                    }
                   }
-                }
-              } catch (error) {
-                reject(
-                  `Error retrieving attachment details for message ${row.ROWID}: ${error}`,
-                );
-              }
-            }
-            messageSendList.push(messageSend);
-          });
 
-          console.log(messageRows.length);
-          resolve(messageRows);
-        }
-      });
+                  const msg = parse(row.hexAB)
+                  console.log(msg);
+                  
+
+                  messageSendList.push(messageSend);
+                }),
+              );
+
+              // Sort messageSendList based on ROWID if needed
+              messageSendList.sort((a, b) => a.ROWID - b.ROWID);
+
+              resolve(messageSendList);
+            } catch (error) {
+              reject(`Error retrieving attachments: ${error}`);
+            }
+          }
+        },
+      );
     });
   }
 

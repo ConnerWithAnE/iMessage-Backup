@@ -5,6 +5,7 @@ import "../../App.css";
 import ChatPanel from "./ChatPanel";
 import React from "react";
 import { ChatPreview } from "../../interfaces/chat_preview.interface";
+import MessageContent from "./MessageContent";
 
 interface MessagePaneProps {
     id: number;
@@ -20,7 +21,7 @@ export default function MessagePane({ id }: MessagePaneProps) {
 
     const [isLoading, setIsLoading] = useState<boolean>(true); // State to track loading
 
-    const debug = false;
+    const debug = true;
 
     useEffect(() => {
         const fetchMessages = async () => {
@@ -38,12 +39,10 @@ export default function MessagePane({ id }: MessagePaneProps) {
                             `http://localhost:3000/messages/${id}`
                         );
                         if (messageResponse.ok) {
-                            
                             const data = await messageResponse.json();
                             setMessages(data); // Ensure messages are in the correct order
-                            console.log(data[0])
-                        }
-                        
+                            console.log(data[0]);
+                        };
                     } catch (error) {
                         console.error("Error fetching messages", error);
                     } finally {
@@ -149,11 +148,11 @@ export default function MessagePane({ id }: MessagePaneProps) {
                 <ChatPanel chatInfo={chatPreview} />
             </div>
             <div
-                className="chat-container flex-grow overflow-y-auto"
+                className="chat-container flex-grow overflow-y-auto px-2"
                 ref={chatContainerRef}
             >
                 {renderedMessages.map((message: Message, index: number) => {
-                    console.log(message)
+                   console.log(message)
                     const prevMessageID =
                         index > 0
                             ? renderedMessages[index - 1].handle_id
@@ -200,7 +199,7 @@ export default function MessagePane({ id }: MessagePaneProps) {
                                 }
                                 prevMessageID={prevMessageID}
                             >
-                                {message.text}
+                                <MessageContent message={message}/>
                             </ChatBubble>
                         </div>
                     );

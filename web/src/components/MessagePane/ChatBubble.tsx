@@ -1,10 +1,10 @@
 import "../../App.css";
 import { Message } from "../../interfaces/message.interface";
 import { usePreviousMessageID } from '../../contexts/PreviousIDContext';
-import { useEffect } from "react";
+import { ReactNode, useEffect } from "react";
 
 interface ChatBubbleProps {
-    children: string;
+    children: ReactNode;
     message: Message;
     handle?: string;
     prevMessageID: number | null;
@@ -30,29 +30,29 @@ const ChatBubble = ({ children, message, handle, prevMessageID }: ChatBubbleProp
         timeZone: 'America/Regina',
       };
 
-    return (
-        
-        <div>
-            <div>
-                  <div className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} mt-4 py-2 px-4 text-gray-800`}>{ message.handle_id === prevMessageID ? "" : (sender ? "Me" : handle)}</div>
-                  
-                  </div>
-        <div
-            className={`${sender ? 'ml-[50%]' : 'mr-[50%]'} px-4 py-2 rounded-2xl ${bubbleStyle} shadow-md`}
-        >
-            <div className="relative">
-                <div className={`absolute inset-0 flex ${bubblePosition}`}>
+      return (
+        <div className={`${sender ? 'flex justify-end' : 'flex justify-start'}`}>
+            <div className="max-w-xs md:max-w-md lg:max-w-lg">
+                <div>
+                    <div className={`mt-4 py-2 px-4 text-gray-800`}>
+                        {message.handle_id === prevMessageID ? "" : (sender ? "Me" : handle)}
+                    </div>
                 </div>
-                
-                <div className="relative p-2">
-                    <div className="text-left whitespace-pre-line">{children}</div>
+                <div className={`px-4 py-2 rounded-2xl ${bubbleStyle} shadow-md inline-block ${sender ? 'justify-end' : '' }`}>
+                    <div className="relative">
+                        <div className={`absolute inset-0 flex ${bubblePosition}`}></div>
+                        <div className="relative p-2">
+                            <div className="text-left whitespace-pre-line">{children}</div>
+                        </div>
+                    </div>
+                </div>
+                <div className={`${sender ? 'text-right' : 'text-left'} text-sm text-slate-400`}>
+                    {new Date((message.date / 1000000000 + Date.parse('2001-01-01') / 1000) * 1000).toLocaleString('en-CA', options)}
                 </div>
             </div>
-            
-        </div>
-        <div className={`${sender ? 'ml-[50%] float-end' : 'mr-[50%]'}  text-sm text-slate-400`}>{new Date((message.date / 1000000000 + Date.parse('2001-01-01') / 1000) * 1000).toLocaleString('en-CA', options)}</div>
         </div>
     );
+
 };
 
 export default ChatBubble;

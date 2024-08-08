@@ -1,67 +1,47 @@
 import { Service } from "../types/service.type";
 
 export interface Message {
-    ROWID: number,
-    guid: string,
-    text: string,
-    handle_id: number,
-    service: Service,
-    account_guid: string,
-    date: number,
-    date_read: number,
-    date_delivered: number,
-    is_delivered: boolean,
-    is_from_me: boolean,
-    is_read: boolean,
-    is_sent: boolean,
-    has_dd_results: boolean,
-    cache_has_attachments: boolean,
-    cache_roomnames: string,
-    is_audio_message: boolean,
-    expire_state: number,
-    associated_message_guid: string,
-    associated_message_type: number,
-    balloon_bundle_id: string,
-    expressive_send_style_id: string,
-    associated_message_range_length: number,
-    reply_to_guid: string,
-    thread_originator_guid: string,
-    thread_originator_part: string,
-    date_retracted: number,
-    date_edited: number,
-    part_count: number,
+    ROWID: number;
+    guid: string;
+    text: string;
+    handle_id: number;
+    service: Service;
+    attachment: MessageAttachment;
+    account_guid: string;
+    date: number;
+    date_read: number;
+    date_delivered: number;
+    is_delivered: boolean;
+    is_from_me: boolean;
+    is_read: boolean;
+    is_sent: boolean;
+    has_dd_results: boolean;
+    cache_has_attachments: boolean;
+    cache_roomnames: string;
+    is_audio_message: boolean;
+    expire_state: number;
+    associated_message_guid: string;
+    associated_message_type: number;
+    balloon_bundle_id: string;
+    expressive_send_style_id: string;
+    associated_message_range_length: number;
+    reply_to_guid: string;
+    thread_originator_guid: string;
+    thread_originator_part: string;
+    date_retracted: number;
+    date_edited: number;
+    part_count: number;
 }
 
-export function createMessageInstance(): Message {
-    return {
-        ROWID: 0,
-        guid: '',
-        text: '',
-        handle_id: 0,
-        service: 'iMessage', // Assuming 'iMessage' is a valid default value
-        account_guid: '',
-        date: 0,
-        date_read: 0,
-        date_delivered: 0,
-        is_delivered: false,
-        is_from_me: false,
-        is_read: false,
-        is_sent: false,
-        has_dd_results: false,
-        cache_has_attachments: false,
-        cache_roomnames: '',
-        is_audio_message: false,
-        expire_state: 0,
-        associated_message_guid: '',
-        associated_message_type: 0,
-        balloon_bundle_id: '',
-        expressive_send_style_id: '',
-        associated_message_range_length: 0,
-        reply_to_guid: '',
-        thread_originator_guid: '',
-        thread_originator_part: '',
-        date_retracted: 0,
-        date_edited: 0,
-        part_count: 0,
-      };
+export interface MessageAttachment {
+    ROWID: number;
+    data: string;
+    filename: string;
+    uti: string;
+    mime_type: string;
+    transfer_name: string;
+    total_bytes: number;
+    is_sticker: boolean;
+    hide_attachment: boolean;
 }
+

@@ -11,7 +11,7 @@ export default function Chat() {
     }
 
     return (
-        <div className="relative bg-gray-100 px-5 mr-2 rounded-lg">
+        <div className="relative bg-gray-100 px-5 mr-2 rounded-lg xl:w-[50%]">
             <MessagePane id={chatId} />
         </div>
     );

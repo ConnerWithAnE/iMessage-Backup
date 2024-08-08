@@ -1,8 +1,19 @@
 import '../../App.css';
 
-import React from 'react';
+import React, { useState } from 'react';
 
 const Topbar = () => {
+
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const handleSearchChange = (event: any) => {
+      const value = event.target.value;
+      setSearchTerm(value);
+      // Execute your function here with the search term
+      console.log('Search Term:', value);
+      // You can call another function here if needed
+  };
+
     return (
       <div className="bg-white grid grid-cols-8 items-center w-full p-2 pb-4 border border-b-gray-200 mb-4 flex-shrink-0">
         {/* Logo */}
@@ -20,6 +31,8 @@ const Topbar = () => {
             type="text"
             placeholder="Search..."
             className="text-black active:border-none outline-none bg-gray-200 px-4 py-4 rounded-3xl w-full"
+            value={searchTerm}
+            onChange={handleSearchChange}
              />
              </form>
              </div>

@@ -13,12 +13,12 @@ export default function Sidebar() {
     return (
         <div className='flex flex-col text-lg pt-5'>
             <Link to={`/list`} className={`flex items-center p-3 hover:bg-slate-100 rounded-e-xl ${selectedTab === 'messages' ? 'bg-slate-200' : ''}`} onClick={() => setSelectedTab('messages')}>
-                <div className='mr-2 text-3xl'><HiOutlineChat /></div>
-                <div className='text-left'>Messages</div>
+                <div className='ml-3 mr-2 text-3xl'><HiOutlineChat /></div>
+                <div className='hidden sm:block text-left'>Messages</div>
             </Link>
             <Link to={`/contacts`} className={`flex items-center p-3 hover:bg-slate-100 rounded-e-xl ${selectedTab === 'contacts' ? 'bg-slate-200' : ''}`} onClick={() => setSelectedTab('contacts')}>
-                <div className='mr-2 text-3xl'><PiAddressBook /></div>
-                <div className='text-left'>Contacts</div>
+                <div className='ml-3 mr-2 text-3xl'><PiAddressBook /></div>
+                <div className='hidden sm:block text-left'>Contacts</div>
             </Link>
         </div>
     )

@@ -11,6 +11,11 @@ export class AppController {
     return this.appService.getMessagesByChatId(chatId);
   }
 
+  @Get('test/streamtypedparser')
+  async testStreamTypedParser() {
+    return this.appService.testStreamTypedParser();
+  }
+
   @Get('chats/previews')
   async getChatPreviews() {
     return this.appService.getChatPreviewsWithHandles();

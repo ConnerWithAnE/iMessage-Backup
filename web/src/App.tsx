@@ -26,7 +26,7 @@ function App() {
                             <div className="col-span-1">
                                 <Sidebar />
                             </div>
-                            <div className="col-span-7 pl-5 flex flex-col h-full">
+                            <div className="col-span-7 pl-3 flex flex-col h-full">
                                 <ChatPreviewContext.Provider
                                     value={{ chatPreview, setChatPreview }}
                                 >

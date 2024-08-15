@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import * as sqlite3 from 'sqlite3';
 import { MessageHandler } from './message-handler';
 import { DBSetup } from './initialDBSetup';
+import { test1 } from './streamtypedparser';
 
 @Injectable()
 export class AppService {
@@ -34,6 +35,10 @@ export class AppService {
 
   async getChatPreviewsWithHandles() {
     return this.messageHandler.getChatPreviewsWithHandles();
+  }
+
+  async testStreamTypedParser() {
+    return test1();
   }
 
   async getChatPreviewWithHandles(chatId: number) {

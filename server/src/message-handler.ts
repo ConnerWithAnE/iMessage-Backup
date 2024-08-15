@@ -442,7 +442,8 @@ export class MessageHandler {
                   }
 
                   const msg = parse(row.hexAB)
-                  console.log(msg);
+                  //console.log(row.ROWID)
+                  //console.log(msg);
                   
 
                   messageSendList.push(messageSend);

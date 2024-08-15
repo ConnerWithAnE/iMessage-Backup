@@ -1,59 +1,52 @@
-import { Buffer } from "buffer";
-
-
-const START_PATTERN: Uint8Array = new Uint8Array([0x01,0x2b]);
-const END_PATTERN: Uint8Array = new Uint8Array([0x86, 0x84]);
+const START_PATTERN = "012B"; // HEX representation of [0x01, 0x2b]
+const END_PATTERN = "8684";   // HEX representation of [0x86, 0x84]
 
 // Error types
 enum StreamTypedError {
   NoStartPattern = 'NoStartPattern',
   NoEndPattern = 'NoEndPattern',
-  InvalidPrefix = 'InvalidPrefix'
+  InvalidPrefix = 'InvalidPrefix',
 }
 
-// Function to parse the body text from a typed stream
-export function parse(stream: Uint8Array): Result<string, StreamTypedError> {
-  // Find the start index and drain
-  let startIndex = -1;
-  for (let idx = 0; idx <= stream.length - START_PATTERN.length; idx++) {
-    if (compareUint8Arrays(stream.slice(idx, idx + START_PATTERN.length), START_PATTERN)) {
-      startIndex = idx + START_PATTERN.length;
-      break;
-    }
-  }
+// Helper function to format HEX string with spaces
+function formatHexWithSpaces(hex: string): string {
+  return hex.match(/.{1,2}/g)?.join(' ') || '';
+}
+
+// Function to parse the body text from a HEX string
+export function parse(hexStream: string): Result<string, StreamTypedError> {
+  // Find the start pattern
+  console.log(formatHexWithSpaces(hexStream));
+  const startIndex = hexStream.indexOf(START_PATTERN);
   if (startIndex === -1) {
     return { error: StreamTypedError.NoStartPattern };
   }
 
-  // Find the end index and truncate
-  let endIndex = -1;
-  for (let idx = startIndex; idx <= stream.length - END_PATTERN.length; idx++) {
-    if (compareUint8Arrays(stream.slice(idx, idx + END_PATTERN.length), END_PATTERN)) {
-      endIndex = idx;
-      break;
-    }
-  }
+  // Find the end pattern
+  const endIndex = hexStream.indexOf(END_PATTERN);
   if (endIndex === -1) {
     return { error: StreamTypedError.NoEndPattern };
   }
 
-  // Extract the relevant part of the stream
-  const relevantBytes = stream.slice(startIndex, endIndex);
+  // Extract the relevant part of the hex stream (between the patterns)
+  const relevantHex = hexStream.slice(startIndex, endIndex);
 
-  // Convert to string and handle potential prefix
-  const decodedString = new TextDecoder().decode(relevantBytes);
+  // Convert the relevant HEX part to a string
+  const decodedString = hexToUTF8String(relevantHex);
+
+  // Handle potential prefix
   const result = dropChars(decodedString);
 
   return result;
 }
 
-// Helper function to compare Uint8Arrays
-function compareUint8Arrays(a: Uint8Array, b: Uint8Array): boolean {
-  if (a.length !== b.length) return false;
-  for (let i = 0; i < a.length; i++) {
-    if (a[i] !== b[i]) return false;
-  }
-  return true;
+function hexToUTF8String(hex: string): string {
+  // Convert HEX to a byte array
+  const bytes = new Uint8Array(hex.match(/.{1,2}/g)?.map(byte => parseInt(byte, 16)) || []);
+
+  // Decode byte array into UTF-8 string
+  const decoder = new TextDecoder('utf-8');
+  return decoder.decode(bytes);
 }
 
 // Function to drop prefix characters from a string
@@ -73,3 +66,16 @@ function dropChars(string: string): Result<string, StreamTypedError> {
 
 // Result type
 type Result<T, E> = { value: T } | { error: E };
+
+
+
+export function test1() {
+  const exampleHexStream = "012b546865206d6573736167658684"; // Represents the stream with start/end patterns
+
+const result = parse(exampleHexStream);
+if ('error' in result) {
+  console.error('Error:', result.error);
+} else {
+  console.log('Parsed message:', result.value); // Should output "The message"
+}
+}

@@ -17,9 +17,9 @@ const Topbar = () => {
     return (
       <div className="bg-white grid grid-cols-8 items-center w-full p-2 pb-4 border border-b-gray-200 mb-4 flex-shrink-0">
         {/* Logo */}
-        <div className="flex items-center col-span-1">
-          <img src="/path/to/logo.png" alt="Logo" className="h-8 mr-4" />
-          
+        <div className="flex items-center col-span-1 min-w-[150px]">
+          <img src="/public/MessageKeeper_logo.png" alt="Logo" className="h-8 ml-4 mr-2" />
+          <h2 className="hidden sm:block">MessageKeeper</h2>
         </div>
   
         {/* Search Bar */}

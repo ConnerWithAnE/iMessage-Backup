@@ -1,3 +1,11 @@
+## Name Potential
+
+iRecall
+iArchive
+MessageKeeper - G
+ChatGlance
+
+
 ## Chat to Messages
 
 each chat has a chat id, lets say for example chat_id 37

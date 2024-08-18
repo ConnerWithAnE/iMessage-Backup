@@ -31,7 +31,8 @@ const ChatPanel = ({chatInfo}: ChatPanelProps) => {
             }
             <div className={`${chatInfo?.display_name ? 'col-span-4' : 'col-span-5'} overflow-x-auto p-3`}>
                 <div className='flex space-x-2'>
-                    {handleIds.map((handleId, index) => (
+                
+                    {handleIds.map((handleId) => (
                         <Link to={`/contacts/${handleId[0]}`} className="rounded-full m-0.5 inline-block px-1.5 bg-blue-300 text-gray-500">{handleId[1]}</Link>
                     ))}
                 </div>

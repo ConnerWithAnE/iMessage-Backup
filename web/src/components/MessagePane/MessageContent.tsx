@@ -5,8 +5,11 @@ export interface MessageContentProps {
 }
 
 const MessageContent: React.FC<MessageContentProps> = ({ message }) => {
+    // @ts-ignore
     let messageContent;
+    // @ts-ignore
     let attachmentType: string;
+    // @ts-ignore
     let typeExtension: string;
 
     const attachments = message.cache_has_attachments;

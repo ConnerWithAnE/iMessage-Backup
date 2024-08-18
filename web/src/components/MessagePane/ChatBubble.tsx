@@ -1,6 +1,8 @@
 import "../../App.css";
 import { Message } from "../../interfaces/message.interface";
+// @ts-ignore
 import { usePreviousMessageID } from '../../contexts/PreviousIDContext';
+// @ts-ignore
 import { ReactNode, useEffect } from "react";
 
 interface ChatBubbleProps {
@@ -14,10 +16,11 @@ const ChatBubble = ({ children, message, handle, prevMessageID }: ChatBubbleProp
 
     const sender = message.is_from_me;
     const bubbleStyle = sender
-        ? `${message.service === 'iMessage' ? "bg-blue-500" : "bg-green-500"} text-white self-end`
-        : "bg-gray-200 text-gray-700";
+        ? `${message.service === 'iMessage' ? /*bg-blue-500*/"bg-appleChatBubble" : "bg-otherChatBubble"} text-white self-end`
+        : "bg-recieveChatBubble text-gray-700";
 
     const bubblePosition = sender ? "items-end" : "items-start";
+    // @ts-ignore
     const bubbleAlign = sender ? "float-end" : "float-start";
 
     const options: Intl.DateTimeFormatOptions = {

@@ -441,7 +441,7 @@ export class MessageHandler {
                     }
                   }
 
-                  const msg = parse(row.hexAB)
+                  //const msg = parse(row.hexAB)
                   //console.log(row.ROWID)
                   //console.log(msg);
                   

@@ -1,3 +1,4 @@
+// @ts-ignore
 import { useContext, useEffect, useState } from "react";
 import "../../App.css";
 import { ChatPreview } from "../../interfaces/chat_preview.interface";

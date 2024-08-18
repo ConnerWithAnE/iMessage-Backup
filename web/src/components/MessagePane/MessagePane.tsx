@@ -14,11 +14,13 @@ interface MessagePaneProps {
 export default function MessagePane({ id }: MessagePaneProps) {
     const [messages, setMessages] = useState<Message[]>([]);
     const [renderedMessages, setRenderedMessages] = useState<Message[]>([]);
+    // @ts-ignore
     const [loadCount, setLoadCount] = useState<number>(10); // Number of messages to load at a time
     const chatContainerRef = useRef<HTMLDivElement>(null);
     const topMessageIdRef = useRef<number | null>(null);
     const [chatPreview, setChatPreview] = React.useState<ChatPreview>();
 
+    // @ts-ignore
     const [isLoading, setIsLoading] = useState<boolean>(true); // State to track loading
 
     const debug = true;

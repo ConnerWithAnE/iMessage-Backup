@@ -16,7 +16,7 @@ function formatHexWithSpaces(hex: string): string {
 // Function to parse the body text from a HEX string
 export function parse(hexStream: string): Result<string, StreamTypedError> {
   // Find the start pattern
-  console.log(formatHexWithSpaces(hexStream));
+  //console.log(formatHexWithSpaces(hexStream));
   const startIndex = hexStream.indexOf(START_PATTERN);
   if (startIndex === -1) {
     return { error: StreamTypedError.NoStartPattern };

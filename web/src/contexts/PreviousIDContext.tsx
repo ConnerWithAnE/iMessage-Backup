@@ -1,4 +1,4 @@
-import { createContext, Dispatch, SetStateAction, useContext, useState } from 'react';
+import { createContext, Dispatch, SetStateAction, useContext } from 'react';
 
 interface PreviousMessageIDContextType {
     previousMessageID: number | null;

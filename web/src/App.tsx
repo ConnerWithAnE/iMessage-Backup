@@ -8,6 +8,7 @@ import { ChatPreviewContext } from "./contexts/ChatPreview.context";
 import { ChatPreview } from "./interfaces/chat_preview.interface";
 import Sidebar from "./components/Navigation/SideBar";
 import { SelectedTabProvider } from "./contexts/SelectedTab.context";
+// @ts-ignore
 import ContactList from "./components/ContactList/ContactList";
 import ContactPage from "./components/ContactList/ContactPage";
 
@@ -26,7 +27,7 @@ function App() {
                             <div className="col-span-1">
                                 <Sidebar />
                             </div>
-                            <div className="col-span-7 pl-3 flex flex-col h-full">
+                            <div className="col-span-7 px-3 flex flex-col h-full">
                                 <ChatPreviewContext.Provider
                                     value={{ chatPreview, setChatPreview }}
                                 >

@@ -15,6 +15,7 @@ body:
   - type: checkboxes
     id: affected-architecture
     attributes:
+      label: Arch
       description: What will be changed and or effected.
       options:
         - label: Frontend/Visual

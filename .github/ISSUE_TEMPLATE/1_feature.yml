@@ -15,7 +15,6 @@ body:
   - type: checkboxes
     id: affected-architecture
     attributes:
-      label: What architecture is affected be this feature
       description: What will be changed and or effected.
       options:
         - label: Frontend/Visual
@@ -25,12 +24,26 @@ body:
         - label: Backend/Data
           required: false
   - type: textarea
-    id: whats-required
+    id: functionality
     attributes:
-      label: Explain the feature
-      description: What is required of it this assignee, what changes need to be made?
+      label: Function
+      description: What functions are required
     validations:
-      required: true
+      required: false
+  - type: textarea
+    id: styling
+    attributes:
+      label: Visual
+      description: What visuals are required
+    validations:
+      required: false
+  - type: textarea
+    id: images
+    attributes:
+      label: Refernece Images
+      description: What new files should be created and which should be modified?
+    validations:
+      required: false
   - type: textarea
     id: affected-files
     attributes:

@@ -1,0 +1,40 @@
+name: Feature
+title: "[Feature]: "
+description: This template is intended to detail features which can be assigned amongst the team
+labels: [ "Feature", "Deliverable 2" ]
+body:
+  - type: markdown
+    attributes:
+      value: |
+         ### Intended Use
+         This issue is intended to be used when detailing features discussed by the group, if it is a self decided request a separate template must be used
+  
+  - type: markdown
+    attributes:
+      value: "## What architecture is affected by this feature"
+  - type: checkboxes
+    id: affected-architecture
+    attributes:
+      label: What architecture is affected be this feature
+      description: What will be changed and or effected.
+      options:
+        - label: Frontend/Visual
+          required: false
+        - label: Backend/Logic
+          required: false
+        - label: Backend/Data
+          required: false
+  - type: textarea
+    id: whats-required
+    attributes:
+      label: Explain the feature
+      description: What is required of it this assignee, what changes need to be made?
+    validations:
+      required: true
+  - type: textarea
+    id: affected-files
+    attributes:
+      label: Affected Files
+      description: What new files should be created and which should be modified?
+    validations:
+      required: true
